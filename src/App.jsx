@@ -24,6 +24,7 @@ import {
   XCircle
 } from "lucide-react";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? (window.location.hostname === "localhost" ? "" : "https://employee-management-system.onrender.com");
 const AUTH_STORAGE_KEY = "employee-management-auth";
 
 const emptyForm = {
@@ -211,7 +212,8 @@ function App() {
   }, [auth?.token]);
 
   async function request(path, { token = auth?.token, ...options } = {}) {
-    const response = await fetch(path, {
+    const url = path.startsWith("http") ? path : `${API_BASE_URL}${path}`;
+    const response = await fetch(url, {
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
