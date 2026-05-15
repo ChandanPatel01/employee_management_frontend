@@ -7,7 +7,11 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/api": {
-        target: "https://employee-management-system.onrender.com",
+        target: "http://localhost:8080",
+        changeOrigin: true
+      },
+      "/uploads": {
+        target: "http://localhost:8080",
         changeOrigin: true
       }
     }

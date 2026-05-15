@@ -24,7 +24,7 @@ import {
   XCircle
 } from "lucide-react";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? (window.location.hostname === "localhost" ? "" : "https://employee-management-system.onrender.com");
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 const AUTH_STORAGE_KEY = "employee-management-auth";
 
 const emptyForm = {
@@ -213,9 +213,10 @@ function App() {
 
   async function request(path, { token = auth?.token, ...options } = {}) {
     const url = path.startsWith("http") ? path : `${API_BASE_URL}${path}`;
+    const isFormData = options.body instanceof FormData;
     const response = await fetch(url, {
       headers: {
-        "Content-Type": "application/json",
+        ...(isFormData ? {} : { "Content-Type": "application/json" }),
         Accept: "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...options.headers
@@ -332,19 +333,29 @@ function App() {
     setDecisionReasons((current) => ({ ...current, [leaveId]: value }));
   }
 
-  function updatePhoto(event) {
+  async function updatePhoto(event) {
     const file = event.target.files?.[0];
     if (!file) {
       return;
     }
 
-    resizeImage(file)
-      .then((photoUrl) => {
-        setForm((current) => ({ ...current, photoUrl }));
-      })
-      .catch(() => {
-        setError("Please select anothe image.");
+    const body = new FormData();
+    body.append("file", file);
+    setSaving(true);
+    setError("");
+
+    try {
+      const data = await request("/api/uploads/employee-photos", {
+        method: "POST",
+        body
       });
+      setForm((current) => ({ ...current, photoUrl: data.photoUrl }));
+    } catch (apiError) {
+      setError(apiError.message || "Please select another image.");
+    } finally {
+      setSaving(false);
+      event.target.value = "";
+    }
   }
 
   function startNewEmployee() {
@@ -1133,36 +1144,6 @@ function employeePhoto(employee, size) {
   const label = initials(`${employee.firstName || ""} ${employee.lastName || ""}`);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><rect width="100%" height="100%" rx="${size / 2}" fill="#15998e"/><text x="50%" y="53%" dominant-baseline="middle" text-anchor="middle" fill="white" font-family="Arial" font-size="${size / 3}" font-weight="700">${label}</text></svg>`;
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
-}
-
-function resizeImage(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      const image = new Image();
-
-      image.onload = () => {
-        const maxSize = 320;
-        const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
-        const width = Math.max(1, Math.round(image.width * scale));
-        const height = Math.max(1, Math.round(image.height * scale));
-        const canvas = document.createElement("canvas");
-        const context = canvas.getContext("2d");
-
-        canvas.width = width;
-        canvas.height = height;
-        context.drawImage(image, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", 0.78));
-      };
-
-      image.onerror = reject;
-      image.src = reader.result;
-    };
-
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 }
 
 function offsetDate(value, days) {
