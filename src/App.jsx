@@ -28,6 +28,7 @@ import menspingoLogo from "./assets/menspingo-logo.svg";
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 const API_PREFIX = `${API_BASE_URL}/api`;
 const AUTH_STORAGE_KEY = "employee-management-auth";
+const ADMIN_ACCESS_DENIED = "Access denied. Only admin users can access this management portal.";
 
 const emptyForm = {
   firstName: "",
@@ -257,6 +258,13 @@ function App() {
         body: JSON.stringify(payload),
         token: null
       });
+
+      if (data.user?.role !== "ADMIN") {
+        localStorage.removeItem(AUTH_STORAGE_KEY);
+        setAuthError(ADMIN_ACCESS_DENIED);
+        return;
+      }
+
       saveAuth(data);
       setAuthForm({ name: "", email: "", password: "" });
     } catch (apiError) {
@@ -512,12 +520,14 @@ function App() {
     setMessage("");
 
     try {
-      await request(`${API_PREFIX}/leaves/${leave.id}/decision`, {
+      const data = await request(`${API_PREFIX}/leaves/${leave.id}/decision`, {
         method: "PUT",
         body: JSON.stringify({ status, reason })
       });
 
-      setMessage(`Leave marked ${leaveStatusLabels[status].toLowerCase()}.`);
+      setMessage(data.emailSent
+        ? "Leave status updated and notification email sent."
+        : "Leave status updated, but email notification could not be sent.");
       setDecisionReasons((current) => ({ ...current, [leave.id]: "" }));
       await loadLeaves();
     } catch (apiError) {
@@ -1143,7 +1153,17 @@ function Field({ label, error, ...props }) {
 function readSavedAuth() {
   try {
     const savedAuth = localStorage.getItem(AUTH_STORAGE_KEY);
-    return savedAuth ? JSON.parse(savedAuth) : null;
+    if (!savedAuth) {
+      return null;
+    }
+
+    const parsedAuth = JSON.parse(savedAuth);
+    if (parsedAuth?.user?.role !== "ADMIN") {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+      return null;
+    }
+
+    return parsedAuth;
   } catch {
     return null;
   }
