@@ -24,7 +24,8 @@ import {
   XCircle
 } from "lucide-react";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+const API_PREFIX = `${API_BASE_URL}/api`;
 const AUTH_STORAGE_KEY = "employee-management-auth";
 
 const emptyForm = {
@@ -250,7 +251,7 @@ function App() {
       : { email: authForm.email, password: authForm.password };
 
     try {
-      const data = await request(`/api/auth/${authMode}`, {
+      const data = await request(`${API_PREFIX}/auth/${authMode}`, {
         method: "POST",
         body: JSON.stringify(payload),
         token: null
@@ -290,7 +291,7 @@ function App() {
 
     try {
       const query = nextDepartment ? `?department=${encodeURIComponent(nextDepartment)}` : "";
-      const data = await request(`/api/employees${query}`);
+      const data = await request(`${API_PREFIX}/employees${query}`);
       setEmployees(data);
     } catch (apiError) {
       setError(apiError.message);
@@ -305,7 +306,7 @@ function App() {
     }
 
     try {
-      const data = await request("/api/leaves");
+      const data = await request(`${API_PREFIX}/leaves`);
       setLeaves(data);
     } catch (apiError) {
       setError(apiError.message);
@@ -345,7 +346,7 @@ function App() {
     setError("");
 
     try {
-      const data = await request("/api/uploads/employee-photos", {
+      const data = await request(`${API_PREFIX}/uploads/employee-photos`, {
         method: "POST",
         body
       });
@@ -408,7 +409,7 @@ function App() {
     };
 
     try {
-      const path = editingId ? `/api/employees/${editingId}` : "/api/employees";
+      const path = editingId ? `${API_PREFIX}/employees/${editingId}` : `${API_PREFIX}/employees`;
       const method = editingId ? "PUT" : "POST";
       await request(path, {
         method,
@@ -437,7 +438,7 @@ function App() {
     setMessage("");
 
     try {
-      await request(`/api/employees/${employee.id}`, { method: "DELETE" });
+      await request(`${API_PREFIX}/employees/${employee.id}`, { method: "DELETE" });
       setMessage("Employee deleted.");
       await loadEmployees();
       await loadLeaves();
@@ -480,7 +481,7 @@ function App() {
     setError("");
 
     try {
-      await request("/api/leaves", {
+      await request(`${API_PREFIX}/leaves`, {
         method: "POST",
         body: JSON.stringify({
           ...leaveForm,
@@ -510,7 +511,7 @@ function App() {
     setMessage("");
 
     try {
-      await request(`/api/leaves/${leave.id}/decision`, {
+      await request(`${API_PREFIX}/leaves/${leave.id}/decision`, {
         method: "PUT",
         body: JSON.stringify({ status, reason })
       });
