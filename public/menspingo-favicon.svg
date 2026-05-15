@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#f7f7f8"/>
+  <text
+    x="9"
+    y="39"
+    fill="#17213f"
+    font-family="Inter, Arial, Helvetica, sans-serif"
+    font-size="20"
+    font-weight="800"
+    letter-spacing="0"
+  >mp</text>
+  <circle cx="45" cy="40" r="7" fill="#7c69ee"/>
+  <path d="M45 21c12 0 21 9 21 21" fill="none" stroke="#7c69ee" stroke-width="4" stroke-linecap="round"/>
+  <path d="M45 13c17 0 29 12 29 29" fill="none" stroke="#7c69ee" stroke-width="3.5" stroke-linecap="round" opacity="0.7"/>
+</svg>

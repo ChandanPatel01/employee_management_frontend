@@ -23,6 +23,7 @@ import {
   X,
   XCircle
 } from "lucide-react";
+import menspingoLogo from "./assets/menspingo-logo.svg";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 const API_PREFIX = `${API_BASE_URL}/api`;
@@ -987,18 +988,47 @@ function App() {
 
 function AuthPage({ mode, form, saving, error, onModeChange, onChange, onSubmit }) {
   const isSignup = mode === "signup";
+  const serviceChips = ["Backend", "AI Integration", "Cloud", "Microservices"];
 
   return (
     <main className="auth-shell">
       <section className="auth-brand">
         <div className="auth-brand-card">
-          <span className="brand-script">Employee MS</span>
-          <h1>Manage your employees with secure JWT login.</h1>
-          <p>Dashboard, leaves, salary history, departments, and employee details in one clean admin panel.</p>
+          <div className="brand-lockup" aria-label="MensPingo Tech Solutions">
+            <div className="brand-logo-panel">
+              <img src={menspingoLogo} alt="MensPingo logo" />
+            </div>
+            <div>
+              <span className="brand-script">MensPingo Tech Solutions</span>
+              <span className="brand-tagline">Smart Tech. Real Connections.</span>
+            </div>
+          </div>
+
+          <div className="signal-card" aria-hidden="true">
+            <span className="signal-node primary" />
+            <span className="signal-node secondary" />
+            <span className="signal-node tertiary" />
+            <span className="signal-line horizontal" />
+            <span className="signal-line vertical" />
+            <span className="signal-wave" />
+          </div>
+
+          <p className="auth-eyebrow">Secure Internal Management Portal</p>
+          <h1>MensPingo Employee Management System</h1>
+          <p>
+            Streamline HR workflows, team records, payroll insights, and approval processes in one secure MensPingo
+            workspace.
+          </p>
+
+          <div className="service-chips" aria-label="MensPingo services">
+            {serviceChips.map((service) => (
+              <span key={service}>{service}</span>
+            ))}
+          </div>
         </div>
       </section>
 
-      <section className="auth-card" aria-label={isSignup ? "Sign up" : "Log in"}>
+      <section className="auth-card" id="auth-panel" aria-label={isSignup ? "Sign up" : "Log in"}>
         <div className="auth-tabs" role="tablist" aria-label="Authentication mode">
           <button className={!isSignup ? "active" : ""} type="button" onClick={() => onModeChange("login")}>
             <LogIn size={17} aria-hidden="true" />
@@ -1011,6 +1041,7 @@ function AuthPage({ mode, form, saving, error, onModeChange, onChange, onSubmit 
         </div>
 
         <form onSubmit={onSubmit}>
+          <p className="auth-form-kicker">Employee Management Portal</p>
           <h2>{isSignup ? "Create Account" : "Welcome Back"}</h2>
           {error && <div className="notice error">{error}</div>}
 

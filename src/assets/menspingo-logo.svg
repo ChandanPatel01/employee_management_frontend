@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 120" role="img" aria-labelledby="title">
+  <title id="title">MensPingo</title>
+  <rect width="420" height="120" rx="18" fill="#f7f7f8"/>
+  <text
+    x="36"
+    y="75"
+    fill="#17213f"
+    font-family="Inter, Arial, Helvetica, sans-serif"
+    font-size="44"
+    font-weight="800"
+    letter-spacing="0"
+  >menspingo</text>
+  <circle cx="319" cy="73" r="18" fill="#7c69ee"/>
+  <path d="M319 33c24 0 43 19 43 43" fill="none" stroke="#7c69ee" stroke-width="9" stroke-linecap="round"/>
+  <path d="M319 17c33 0 59 26 59 59" fill="none" stroke="#7c69ee" stroke-width="8" stroke-linecap="round" opacity="0.72"/>
+</svg>
