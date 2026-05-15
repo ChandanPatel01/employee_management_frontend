@@ -525,9 +525,9 @@ function App() {
         body: JSON.stringify({ status, reason })
       });
 
-      setMessage(data.emailSent
+      setMessage(data.message || (data.emailSent
         ? "Leave status updated and notification email sent."
-        : "Leave status updated, but email notification could not be sent.");
+        : "Leave status updated, but email notification could not be sent."));
       setDecisionReasons((current) => ({ ...current, [leave.id]: "" }));
       await loadLeaves();
     } catch (apiError) {
