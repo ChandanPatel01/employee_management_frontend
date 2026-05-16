@@ -1,14 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Banknote,
+  BarChart3,
+  BookOpen,
+  BriefcaseBusiness,
   Building2,
   CalendarCheck2,
   CheckCircle2,
+  ClipboardCheck,
+  ClipboardList,
   Edit3,
   Eye,
+  FileArchive,
   FileText,
   Gauge,
+  GraduationCap,
   Hourglass,
+  IdCard,
   Loader2,
   LogIn,
   LogOut,
@@ -16,8 +24,10 @@ import {
   RefreshCcw,
   Search,
   Settings,
+  ShieldCheck,
   Trash2,
   UserPlus,
+  UserCheck,
   Users,
   X,
   XCircle
@@ -26,7 +36,7 @@ import {
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 const API_PREFIX = `${API_BASE_URL}/api`;
 const AUTH_STORAGE_KEY = "employee-management-auth";
-const ADMIN_ACCESS_DENIED = "Access denied. Only admin users can access this management portal.";
+const ACCESS_DENIED_MESSAGE = "Access denied. You do not have permission to access this module.";
 // To swap in your uploaded PNG logo, place it at frontend/public/logo.png and change this to "/logo.png".
 const BRAND_LOGO_SRC = "/assets/menspingo-logo.svg";
 
@@ -94,6 +104,65 @@ const emptyCommunicationForm = {
   createdBy: ""
 };
 
+const emptyDailyUpdateForm = {
+  updateDate: today(),
+  workSummary: "",
+  blockers: "",
+  hoursWorked: "8"
+};
+
+const emptyMyLeaveForm = {
+  leaveType: "Sick Leave",
+  fromDate: today(),
+  toDate: today(),
+  description: ""
+};
+
+const emptyTeamTaskForm = {
+  title: "",
+  description: "",
+  priority: "MEDIUM",
+  status: "PENDING",
+  dueDate: today(),
+  assignedTo: ""
+};
+
+const emptyProjectForm = {
+  projectName: "",
+  clientName: "",
+  startDate: today(),
+  deadline: today(),
+  status: "PLANNED",
+  assignedTeam: ""
+};
+
+const emptyCandidateForm = {
+  name: "",
+  email: "",
+  phone: "",
+  skill: "",
+  experience: "",
+  resumeUrl: "",
+  status: "NEW",
+  interviewDate: today(),
+  notes: ""
+};
+
+const emptyDocumentForm = {
+  employeeId: "",
+  documentType: "",
+  documentUrl: ""
+};
+
+const emptyAttendanceForm = {
+  userEmail: "",
+  attendanceDate: today(),
+  status: "PRESENT",
+  checkInTime: "09:30",
+  checkOutTime: "18:30",
+  notes: ""
+};
+
 const leaveStatusLabels = {
   PENDING: "Pending",
   APPROVED: "Approved",
@@ -101,15 +170,47 @@ const leaveStatusLabels = {
   REJECTED: "Rejected"
 };
 
-const navItems = [
-  { id: "dashboard", label: "Dashboard", title: "Management Dashboard", icon: Gauge },
-  { id: "employees", label: "Employees", title: "Manage Employees", icon: Users },
-  { id: "departments", label: "Departments", title: "Departments", icon: Building2 },
-  { id: "leaves", label: "Leaves", title: "Manage Leaves", icon: CalendarCheck2 },
-  { id: "salary", label: "Salary", title: "Salary History", icon: Banknote },
-  { id: "crm", label: "CRM Portal", title: "CRM Portal", icon: FileText },
-  { id: "settings", label: "Setting", title: "Setting", icon: Settings }
-];
+const roleDashboardTitles = {
+  EMPLOYEE: "My Workspace",
+  TEAM_LEAD: "Team Lead Dashboard",
+  HR: "HR Dashboard",
+  ADMIN: "Admin Dashboard",
+  FOUNDER: "Founder Dashboard"
+};
+
+const allNavItems = {
+  dashboard: { id: "dashboard", label: "Dashboard", title: "Management Dashboard", icon: Gauge },
+  employees: { id: "employees", label: "Employees", title: "Manage Employees", icon: Users },
+  departments: { id: "departments", label: "Departments", title: "Departments", icon: Building2 },
+  leaves: { id: "leaves", label: "Leaves", title: "Manage Leaves", icon: CalendarCheck2 },
+  salary: { id: "salary", label: "Salary", title: "Salary History", icon: Banknote },
+  crm: { id: "crm", label: "CRM Portal", title: "CRM Portal", icon: FileText },
+  settings: { id: "settings", label: "Settings", title: "Settings", icon: Settings },
+  myTasks: { id: "myTasks", label: "My Tasks", title: "My Workspace", icon: ClipboardList },
+  dailyUpdates: { id: "dailyUpdates", label: "Daily Updates", title: "Daily Updates", icon: ClipboardCheck },
+  learningResources: { id: "learningResources", label: "Learning Resources", title: "Learning Resources", icon: BookOpen },
+  profile: { id: "profile", label: "Profile", title: "My Profile", icon: IdCard },
+  myAttendance: { id: "myAttendance", label: "My Attendance", title: "My Attendance", icon: CalendarCheck2 },
+  myLeave: { id: "myLeave", label: "My Leave", title: "My Leave", icon: FileText },
+  teamTasks: { id: "teamTasks", label: "Team Tasks", title: "Team Lead Dashboard", icon: ClipboardList },
+  projectManagement: { id: "projectManagement", label: "Project Management", title: "Project Management", icon: BriefcaseBusiness },
+  reports: { id: "reports", label: "Reports", title: "Reports", icon: BarChart3 },
+  teamUpdates: { id: "teamUpdates", label: "Team Updates", title: "Team Updates", icon: ClipboardCheck },
+  employeePerformance: { id: "employeePerformance", label: "Employee Performance", title: "Employee Performance", icon: UserCheck },
+  candidates: { id: "candidates", label: "Candidates", title: "HR Dashboard", icon: UserPlus },
+  documents: { id: "documents", label: "Documents", title: "Employee Documents", icon: FileArchive },
+  attendance: { id: "attendance", label: "Attendance", title: "Attendance", icon: CalendarCheck2 },
+  hrModule: { id: "hrModule", label: "HR Module", title: "HR Module", icon: GraduationCap },
+  rolePermissions: { id: "rolePermissions", label: "Role & Permission Management", title: "Role & Permission Management", icon: ShieldCheck }
+};
+
+const roleMenus = {
+  EMPLOYEE: ["myTasks", "dailyUpdates", "learningResources", "profile", "myAttendance", "myLeave"],
+  TEAM_LEAD: ["teamTasks", "projectManagement", "reports", "teamUpdates", "employeePerformance"],
+  HR: ["candidates", "employees", "documents", "attendance", "leaves", "salary"],
+  ADMIN: ["dashboard", "employees", "departments", "leaves", "salary", "crm", "hrModule", "projectManagement", "reports", "settings", "rolePermissions"],
+  FOUNDER: ["dashboard", "employees", "departments", "leaves", "salary", "crm", "hrModule", "projectManagement", "reports", "settings", "rolePermissions"]
+};
 
 function App() {
   const [auth, setAuth] = useState(readSavedAuth);
@@ -128,6 +229,13 @@ function App() {
   const [customerForm, setCustomerForm] = useState(emptyCustomerForm);
   const [crmTaskForm, setCrmTaskForm] = useState(emptyCrmTaskForm);
   const [communicationForm, setCommunicationForm] = useState(emptyCommunicationForm);
+  const [dailyUpdateForm, setDailyUpdateForm] = useState(emptyDailyUpdateForm);
+  const [myLeaveForm, setMyLeaveForm] = useState(emptyMyLeaveForm);
+  const [teamTaskForm, setTeamTaskForm] = useState(emptyTeamTaskForm);
+  const [projectForm, setProjectForm] = useState(emptyProjectForm);
+  const [candidateForm, setCandidateForm] = useState(emptyCandidateForm);
+  const [documentForm, setDocumentForm] = useState(emptyDocumentForm);
+  const [attendanceForm, setAttendanceForm] = useState(emptyAttendanceForm);
   const [decisionReasons, setDecisionReasons] = useState({});
   const [editingId, setEditingId] = useState(null);
   const [editingCustomerId, setEditingCustomerId] = useState(null);
@@ -143,12 +251,32 @@ function App() {
   const [crmCommunicationFilter, setCrmCommunicationFilter] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [showEmployeeForm, setShowEmployeeForm] = useState(false);
+  const [portalTasks, setPortalTasks] = useState([]);
+  const [dailyUpdates, setDailyUpdates] = useState([]);
+  const [learningResources, setLearningResources] = useState([]);
+  const [roleProfile, setRoleProfile] = useState(null);
+  const [myAttendance, setMyAttendance] = useState([]);
+  const [myLeaves, setMyLeaves] = useState([]);
+  const [teamTasks, setTeamTasks] = useState([]);
+  const [teamUpdates, setTeamUpdates] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [taskSummary, setTaskSummary] = useState(null);
+  const [performanceRows, setPerformanceRows] = useState([]);
+  const [candidates, setCandidates] = useState([]);
+  const [documents, setDocuments] = useState([]);
+  const [attendance, setAttendance] = useState([]);
+  const [managedUsers, setManagedUsers] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [crmLoading, setCrmLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [validationErrors, setValidationErrors] = useState({});
+
+  const userRole = auth?.user?.role || "EMPLOYEE";
+  const navItems = useMemo(() => getNavigationForRole(userRole), [userRole]);
+  const canAccessActiveView = navItems.some((item) => item.id === activeView);
 
   const departments = useMemo(() => {
     return [...new Set(employees.map((employee) => employee.department).filter(Boolean))].sort();
@@ -268,12 +396,20 @@ function App() {
   }, [crmCommunicationFilter, crmCommunications]);
 
   useEffect(() => {
-    if (auth?.token) {
-      loadEmployees("");
-      loadLeaves();
-      loadCrmData();
+    if (!auth?.token || navItems.length === 0) {
+      return;
     }
-  }, [auth?.token]);
+
+    if (!navItems.some((item) => item.id === activeView)) {
+      setActiveView(navItems[0].id);
+    }
+  }, [auth?.token, activeView, navItems]);
+
+  useEffect(() => {
+    if (auth?.token && canAccessActiveView) {
+      loadViewData(activeView);
+    }
+  }, [auth?.token, activeView, canAccessActiveView]);
 
   async function request(path, { token = auth?.token, ...options } = {}) {
     const url = path.startsWith("http") ? path : `${API_BASE_URL}${path}`;
@@ -320,14 +456,9 @@ function App() {
         token: null
       });
 
-      if (data.user?.role !== "ADMIN") {
-        localStorage.removeItem(AUTH_STORAGE_KEY);
-        setAuthError(ADMIN_ACCESS_DENIED);
-        return;
-      }
-
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(data));
       setAuth(data);
+      setActiveView(getDefaultViewForRole(data.user?.role));
       setAuthForm({ name: "", email: "", password: "" });
     } catch (apiError) {
       setAuthError(apiError.message);
@@ -349,12 +480,35 @@ function App() {
     setCustomerForm(emptyCustomerForm);
     setCrmTaskForm(emptyCrmTaskForm);
     setCommunicationForm(emptyCommunicationForm);
+    setDailyUpdateForm(emptyDailyUpdateForm);
+    setMyLeaveForm(emptyMyLeaveForm);
+    setTeamTaskForm(emptyTeamTaskForm);
+    setProjectForm(emptyProjectForm);
+    setCandidateForm(emptyCandidateForm);
+    setDocumentForm(emptyDocumentForm);
+    setAttendanceForm(emptyAttendanceForm);
     setEditingId(null);
     setEditingCustomerId(null);
     setEditingCrmTaskId(null);
     setEditingCommunicationId(null);
     setSelectedEmployee(null);
     setShowEmployeeForm(false);
+    setPortalTasks([]);
+    setDailyUpdates([]);
+    setLearningResources([]);
+    setRoleProfile(null);
+    setMyAttendance([]);
+    setMyLeaves([]);
+    setTeamTasks([]);
+    setTeamUpdates([]);
+    setProjects([]);
+    setTaskSummary(null);
+    setPerformanceRows([]);
+    setCandidates([]);
+    setDocuments([]);
+    setAttendance([]);
+    setManagedUsers([]);
+    setRoles([]);
     setMessage(showMessage ? "Signed out." : "");
     setError(showMessage ? "" : "Session expired. Please log in again.");
   }
@@ -461,6 +615,111 @@ function App() {
     }
   }
 
+  async function loadViewData(view = activeView) {
+    if (!auth?.token) {
+      return;
+    }
+
+    if (["dashboard", "employees", "departments", "salary"].includes(view)) {
+      await loadEmployees("");
+    }
+
+    if (["dashboard", "leaves"].includes(view)) {
+      await loadLeaves();
+    }
+
+    if (view === "crm") {
+      await loadCrmData();
+      return;
+    }
+
+    await loadRoleViewData(view);
+  }
+
+  async function loadRoleViewData(view) {
+    setLoading(true);
+    setError("");
+
+    try {
+      switch (view) {
+        case "myTasks":
+          setPortalTasks(await request(`${API_PREFIX}/portal/my-tasks`));
+          break;
+        case "dailyUpdates":
+          setDailyUpdates(await request(`${API_PREFIX}/portal/daily-updates`));
+          break;
+        case "learningResources":
+          setLearningResources(await request(`${API_PREFIX}/portal/learning-resources`));
+          break;
+        case "profile":
+          setRoleProfile(await request(`${API_PREFIX}/portal/profile`));
+          break;
+        case "myAttendance":
+          setMyAttendance(await request(`${API_PREFIX}/portal/my-attendance`));
+          break;
+        case "myLeave":
+          setMyLeaves(await request(`${API_PREFIX}/portal/my-leaves`));
+          break;
+        case "teamTasks":
+          setTeamTasks(await request(`${API_PREFIX}/team/tasks`));
+          break;
+        case "projectManagement":
+          setProjects(await request(`${API_PREFIX}/projects`));
+          break;
+        case "reports": {
+          const [summary, progress] = await Promise.all([
+            request(`${API_PREFIX}/reports/task-summary`),
+            request(`${API_PREFIX}/reports/team-progress`)
+          ]);
+          setTaskSummary(summary);
+          setProjects(progress);
+          break;
+        }
+        case "teamUpdates":
+          setTeamUpdates(await request(`${API_PREFIX}/team/updates`));
+          break;
+        case "employeePerformance":
+          setPerformanceRows(await request(`${API_PREFIX}/team/performance`));
+          break;
+        case "candidates":
+          setCandidates(await request(`${API_PREFIX}/hr/candidates`));
+          break;
+        case "documents":
+          setDocuments(await request(`${API_PREFIX}/hr/documents`));
+          break;
+        case "attendance":
+          setAttendance(await request(`${API_PREFIX}/hr/attendance`));
+          break;
+        case "hrModule": {
+          const [candidateRows, documentRows, attendanceRows] = await Promise.all([
+            request(`${API_PREFIX}/hr/candidates`),
+            request(`${API_PREFIX}/hr/documents`),
+            request(`${API_PREFIX}/hr/attendance`)
+          ]);
+          setCandidates(candidateRows);
+          setDocuments(documentRows);
+          setAttendance(attendanceRows);
+          break;
+        }
+        case "rolePermissions": {
+          const [userRows, roleRows] = await Promise.all([
+            request(`${API_PREFIX}/admin/users`),
+            request(`${API_PREFIX}/admin/roles`)
+          ]);
+          setManagedUsers(userRows);
+          setRoles(roleRows);
+          break;
+        }
+        default:
+          break;
+      }
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function updateField(event) {
     const { name, value } = event.target;
     setForm((current) => ({ ...current, [name]: value }));
@@ -491,6 +750,11 @@ function App() {
   function updateCommunicationField(event) {
     const { name, value } = event.target;
     setCommunicationForm((current) => ({ ...current, [name]: value }));
+  }
+
+  function updateStateField(setter, event) {
+    const { name, value } = event.target;
+    setter((current) => ({ ...current, [name]: value }));
   }
 
   function updateDecisionReason(leaveId, value) {
@@ -909,18 +1173,184 @@ function App() {
     }
   }
 
+  async function handleDailyUpdateSubmit(event) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    try {
+      await request(`${API_PREFIX}/portal/daily-updates`, {
+        method: "POST",
+        body: JSON.stringify({ ...dailyUpdateForm, hoursWorked: Number(dailyUpdateForm.hoursWorked || 0) })
+      });
+      setDailyUpdateForm(emptyDailyUpdateForm);
+      setMessage("Daily update submitted.");
+      await loadRoleViewData("dailyUpdates");
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleMyLeaveSubmit(event) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    try {
+      await request(`${API_PREFIX}/portal/my-leaves`, {
+        method: "POST",
+        body: JSON.stringify(myLeaveForm)
+      });
+      setMyLeaveForm(emptyMyLeaveForm);
+      setMessage("Leave request submitted.");
+      await loadRoleViewData("myLeave");
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleTeamTaskSubmit(event) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    try {
+      await request(`${API_PREFIX}/team/tasks`, {
+        method: "POST",
+        body: JSON.stringify(teamTaskForm)
+      });
+      setTeamTaskForm(emptyTeamTaskForm);
+      setMessage("Team task saved.");
+      await loadRoleViewData("teamTasks");
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function updateTeamTaskStatus(task, status) {
+    setError("");
+    try {
+      await request(`${API_PREFIX}/team/tasks/${task.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ ...task, status })
+      });
+      setMessage("Task status updated.");
+      await loadRoleViewData("teamTasks");
+    } catch (apiError) {
+      setError(apiError.message);
+    }
+  }
+
+  async function handleProjectSubmit(event) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    try {
+      await request(`${API_PREFIX}/projects`, {
+        method: "POST",
+        body: JSON.stringify(projectForm)
+      });
+      setProjectForm(emptyProjectForm);
+      setMessage("Project saved.");
+      await loadRoleViewData("projectManagement");
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleCandidateSubmit(event) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    try {
+      await request(`${API_PREFIX}/hr/candidates`, {
+        method: "POST",
+        body: JSON.stringify(candidateForm)
+      });
+      setCandidateForm(emptyCandidateForm);
+      setMessage("Candidate saved.");
+      await loadRoleViewData("candidates");
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDocumentSubmit(event) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    try {
+      await request(`${API_PREFIX}/hr/documents`, {
+        method: "POST",
+        body: JSON.stringify({ ...documentForm, employeeId: Number(documentForm.employeeId || 0) })
+      });
+      setDocumentForm(emptyDocumentForm);
+      setMessage("Document saved.");
+      await loadRoleViewData("documents");
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleAttendanceSubmit(event) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    try {
+      await request(`${API_PREFIX}/hr/attendance`, {
+        method: "POST",
+        body: JSON.stringify(attendanceForm)
+      });
+      setAttendanceForm(emptyAttendanceForm);
+      setMessage("Attendance saved.");
+      await loadRoleViewData("attendance");
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function updateUserRole(userId, role) {
+    setError("");
+
+    try {
+      await request(`${API_PREFIX}/admin/users/${userId}/role`, {
+        method: "PUT",
+        body: JSON.stringify({ role })
+      });
+      setMessage("User role updated.");
+      await loadRoleViewData("rolePermissions");
+    } catch (apiError) {
+      setError(apiError.message);
+    }
+  }
+
   function refreshActiveView() {
-    if (activeView === "crm") {
-      loadCrmData();
-      return;
-    }
-
-    if (activeView === "leaves") {
-      loadLeaves();
-      return;
-    }
-
-    loadEmployees();
+    loadViewData(activeView);
   }
 
   function selectView(view) {
@@ -950,7 +1380,12 @@ function App() {
     );
   }
 
-  const activeItem = navItems.find((item) => item.id === activeView) || navItems[0];
+  const activeItem = navItems.find((item) => item.id === activeView) || navItems[0] || allNavItems.myTasks;
+  const pageTitle = selectedEmployee
+    ? "Employee Details"
+    : activeView === "dashboard"
+      ? roleDashboardTitles[userRole] || activeItem.title
+      : activeItem.title;
   const pageSubtitle = selectedEmployee ? "Employee profile, work details, and quick management actions." : getPageSubtitle(activeView);
 
   return (
@@ -967,13 +1402,13 @@ function App() {
       </header>
 
       <div className="layout-shell">
-        <Sidebar activeView={activeView} onSelect={selectView} />
+        <Sidebar activeView={activeView} items={navItems} onSelect={selectView} />
 
         <section className="content-shell">
           <section className="page-heading">
             <div className="page-title-stack">
               <div>
-                <h1>{selectedEmployee ? "Employee Details" : activeItem.title}</h1>
+                <h1>{pageTitle}</h1>
                 <p>{pageSubtitle}</p>
               </div>
             </div>
@@ -990,23 +1425,57 @@ function App() {
           {loading && employees.length === 0 ? (
             <div className="screen-loader">
               <Loader2 className="spin" size={28} aria-hidden="true" />
-              Loading employees...
+              Loading {activeItem.label.toLowerCase()}...
             </div>
           ) : (
             <>
-              {activeView === "dashboard" && renderDashboard()}
-              {activeView === "employees" && renderEmployees()}
-              {activeView === "departments" && renderDepartments()}
-              {activeView === "leaves" && renderLeaves()}
-              {activeView === "salary" && renderSalary()}
-              {activeView === "crm" && renderCrmPortal()}
-              {activeView === "settings" && renderSettings()}
+              {!canAccessActiveView ? renderAccessDenied() : renderActiveView()}
             </>
           )}
         </section>
       </div>
     </main>
   );
+
+  function renderActiveView() {
+    const views = {
+      dashboard: renderDashboard,
+      employees: renderEmployees,
+      departments: renderDepartments,
+      leaves: renderLeaves,
+      salary: renderSalary,
+      crm: renderCrmPortal,
+      settings: renderSettings,
+      myTasks: renderMyTasks,
+      dailyUpdates: renderDailyUpdates,
+      learningResources: renderLearningResources,
+      profile: renderProfile,
+      myAttendance: renderMyAttendance,
+      myLeave: renderMyLeave,
+      teamTasks: renderTeamTasks,
+      projectManagement: renderProjectManagement,
+      reports: renderReports,
+      teamUpdates: renderTeamUpdates,
+      employeePerformance: renderEmployeePerformance,
+      candidates: renderCandidates,
+      documents: renderDocuments,
+      attendance: renderAttendance,
+      hrModule: renderHrModule,
+      rolePermissions: renderRolePermissions
+    };
+
+    return (views[activeView] || renderAccessDenied)();
+  }
+
+  function renderAccessDenied() {
+    return (
+      <section className="access-denied-card">
+        <ShieldCheck size={34} aria-hidden="true" />
+        <h2>Access denied</h2>
+        <p>{ACCESS_DENIED_MESSAGE}</p>
+      </section>
+    );
+  }
 
   function renderDashboard() {
     return (
@@ -1398,6 +1867,422 @@ function App() {
     );
   }
 
+  function renderMyTasks() {
+    return (
+      <section className="management-screen role-screen">
+        <div className="overview-grid compact-grid">
+          <OverviewCard icon={ClipboardList} tone="teal" label="Assigned Tasks" value={portalTasks.length} compact />
+          <OverviewCard icon={Hourglass} tone="amber" label="Pending" value={portalTasks.filter((task) => task.status !== "COMPLETED").length} compact />
+          <OverviewCard icon={CheckCircle2} tone="green" label="Completed" value={portalTasks.filter((task) => task.status === "COMPLETED").length} compact />
+        </div>
+        <div className="data-card">
+          <table>
+            <thead><tr><th>Task</th><th>Priority</th><th>Status</th><th>Due Date</th><th>Assigned By</th></tr></thead>
+            <tbody>
+              {portalTasks.map((task) => (
+                <tr key={task.id}>
+                  <td><strong>{task.title}</strong><span>{task.description || "No description"}</span></td>
+                  <td><span className={`crm-badge ${priorityTone(task.priority)}`}>{task.priority}</span></td>
+                  <td><span className={`crm-badge ${statusTone(task.status)}`}>{task.status}</span></td>
+                  <td>{formatDate(task.dueDate)}</td>
+                  <td>{task.assignedBy || "-"}</td>
+                </tr>
+              ))}
+              {portalTasks.length === 0 && <tr><td colSpan="5">No assigned tasks yet.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    );
+  }
+
+  function renderDailyUpdates() {
+    return (
+      <section className="management-screen role-screen">
+        <form className="form-panel" onSubmit={handleDailyUpdateSubmit}>
+          <div className="section-heading"><h2>Submit Daily Update</h2></div>
+          <div className="form-grid role-form-grid">
+            <Field label="Update Date" name="updateDate" type="date" value={dailyUpdateForm.updateDate} onChange={(event) => updateStateField(setDailyUpdateForm, event)} required />
+            <Field label="Hours Worked" name="hoursWorked" type="number" min="0" step="0.5" value={dailyUpdateForm.hoursWorked} onChange={(event) => updateStateField(setDailyUpdateForm, event)} required />
+            <TextArea label="Work Summary" name="workSummary" className="span-2" value={dailyUpdateForm.workSummary} onChange={(event) => updateStateField(setDailyUpdateForm, event)} required />
+            <TextArea label="Blockers" name="blockers" className="span-2" value={dailyUpdateForm.blockers} onChange={(event) => updateStateField(setDailyUpdateForm, event)} />
+          </div>
+          <button className="primary-button" type="submit" disabled={saving}>{saving ? "Saving..." : "Submit update"}</button>
+        </form>
+        <div className="data-card">
+          <table>
+            <thead><tr><th>Date</th><th>Summary</th><th>Blockers</th><th>Hours</th></tr></thead>
+            <tbody>
+              {dailyUpdates.map((update) => (
+                <tr key={update.id}>
+                  <td>{formatDate(update.updateDate)}</td>
+                  <td><strong>{update.workSummary}</strong></td>
+                  <td>{update.blockers || "-"}</td>
+                  <td>{update.hoursWorked}</td>
+                </tr>
+              ))}
+              {dailyUpdates.length === 0 && <tr><td colSpan="4">No daily updates submitted yet.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    );
+  }
+
+  function renderLearningResources() {
+    return (
+      <section className="panel-grid">
+        {learningResources.map((resource) => (
+          <article className="department-card resource-card" key={resource.id}>
+            <BookOpen size={26} aria-hidden="true" />
+            <div>
+              <h2>{resource.title}</h2>
+              <p><span className="inline-badge">{resource.type}</span>{resource.description || "Learning material"}</p>
+            </div>
+            <a className="solid-action link-action" href={resource.link} target="_blank" rel="noreferrer">Open resource</a>
+          </article>
+        ))}
+        {learningResources.length === 0 && <div className="access-denied-card"><BookOpen size={30} aria-hidden="true" /><h2>No resources yet</h2><p>Learning resources added by HR will appear here.</p></div>}
+      </section>
+    );
+  }
+
+  function renderProfile() {
+    const profile = roleProfile || auth.user || {};
+    return (
+      <section className="settings-grid">
+        <article className="department-card">
+          <IdCard size={28} aria-hidden="true" />
+          <h2>{profile.name || auth.user?.name}</h2>
+          <p>{profile.email || auth.user?.email}</p>
+          <span className="inline-badge">{profile.role || userRole}</span>
+        </article>
+        <article className="department-card">
+          <BriefcaseBusiness size={28} aria-hidden="true" />
+          <h2>Employee Details</h2>
+          <p>Department: {profile.department || "-"}</p>
+          <p>Position: {profile.jobTitle || "-"}</p>
+          <p>Employee ID: {profile.employeeCode || profile.employeeId || "-"}</p>
+        </article>
+      </section>
+    );
+  }
+
+  function renderMyAttendance() {
+    return (
+      <section className="management-screen">
+        <div className="data-card">
+          <table>
+            <thead><tr><th>Date</th><th>Status</th><th>Check In</th><th>Check Out</th><th>Notes</th></tr></thead>
+            <tbody>
+              {myAttendance.map((row) => (
+                <tr key={row.id}>
+                  <td>{formatDate(row.attendanceDate)}</td>
+                  <td><span className={`crm-badge ${statusTone(row.status)}`}>{row.status}</span></td>
+                  <td>{formatTime(row.checkInTime)}</td>
+                  <td>{formatTime(row.checkOutTime)}</td>
+                  <td>{row.notes || "-"}</td>
+                </tr>
+              ))}
+              {myAttendance.length === 0 && <tr><td colSpan="5">No attendance records found.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    );
+  }
+
+  function renderMyLeave() {
+    return (
+      <section className="management-screen">
+        <form className="form-panel leave-form" onSubmit={handleMyLeaveSubmit}>
+          <div className="section-heading"><h2>Apply Leave</h2></div>
+          <div className="leave-form-grid">
+            <Field label="Leave Type" name="leaveType" value={myLeaveForm.leaveType} onChange={(event) => updateStateField(setMyLeaveForm, event)} required />
+            <Field label="From" name="fromDate" type="date" value={myLeaveForm.fromDate} onChange={(event) => updateStateField(setMyLeaveForm, event)} required />
+            <Field label="To" name="toDate" type="date" value={myLeaveForm.toDate} onChange={(event) => updateStateField(setMyLeaveForm, event)} required />
+            <TextArea label="Description" name="description" className="span-2" value={myLeaveForm.description} onChange={(event) => updateStateField(setMyLeaveForm, event)} />
+          </div>
+          <button className="primary-button" type="submit" disabled={saving}>{saving ? "Saving..." : "Apply leave"}</button>
+        </form>
+        <div className="data-card">
+          <table>
+            <thead><tr><th>Leave Type</th><th>From</th><th>To</th><th>Status</th><th>Decision</th></tr></thead>
+            <tbody>
+              {myLeaves.map((leave) => (
+                <tr key={leave.id}>
+                  <td><strong>{leave.leaveType}</strong><span>{leave.description || "-"}</span></td>
+                  <td>{formatDate(leave.fromDate)}</td>
+                  <td>{formatDate(leave.toDate)}</td>
+                  <td><span className={`leave-status ${leave.status.toLowerCase()}`}>{leaveStatusLabels[leave.status] || leave.status}</span></td>
+                  <td>{leave.decisionReason || "-"}</td>
+                </tr>
+              ))}
+              {myLeaves.length === 0 && <tr><td colSpan="5">No leave requests yet.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    );
+  }
+
+  function renderTeamTasks() {
+    return (
+      <section className="management-screen role-screen">
+        <form className="form-panel" onSubmit={handleTeamTaskSubmit}>
+          <div className="section-heading"><h2>Assign Team Task</h2></div>
+          <div className="form-grid role-form-grid">
+            <Field label="Title" name="title" value={teamTaskForm.title} onChange={(event) => updateStateField(setTeamTaskForm, event)} required />
+            <Field label="Assigned To Email" name="assignedTo" type="email" value={teamTaskForm.assignedTo} onChange={(event) => updateStateField(setTeamTaskForm, event)} required />
+            <Field label="Due Date" name="dueDate" type="date" value={teamTaskForm.dueDate} onChange={(event) => updateStateField(setTeamTaskForm, event)} required />
+            <label className="field"><span>Priority</span><select name="priority" value={teamTaskForm.priority} onChange={(event) => updateStateField(setTeamTaskForm, event)}><option>LOW</option><option>MEDIUM</option><option>HIGH</option></select></label>
+            <TextArea label="Description" name="description" className="span-2" value={teamTaskForm.description} onChange={(event) => updateStateField(setTeamTaskForm, event)} />
+          </div>
+          <button className="primary-button" type="submit" disabled={saving}>{saving ? "Saving..." : "Assign task"}</button>
+        </form>
+        <div className="data-card">
+          <table>
+            <thead><tr><th>Task</th><th>Assigned To</th><th>Priority</th><th>Due Date</th><th>Status</th></tr></thead>
+            <tbody>
+              {teamTasks.map((task) => (
+                <tr key={task.id}>
+                  <td><strong>{task.title}</strong><span>{task.description || "-"}</span></td>
+                  <td>{task.assignedTo}</td>
+                  <td><span className={`crm-badge ${priorityTone(task.priority)}`}>{task.priority}</span></td>
+                  <td>{formatDate(task.dueDate)}</td>
+                  <td><select className="status-select" value={task.status} onChange={(event) => updateTeamTaskStatus(task, event.target.value)}><option>PENDING</option><option>IN_PROGRESS</option><option>COMPLETED</option><option>BLOCKED</option></select></td>
+                </tr>
+              ))}
+              {teamTasks.length === 0 && <tr><td colSpan="5">No team tasks yet.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    );
+  }
+
+  function renderProjectManagement() {
+    return (
+      <section className="management-screen">
+        <form className="form-panel" onSubmit={handleProjectSubmit}>
+          <div className="section-heading"><h2>Add Project</h2></div>
+          <div className="form-grid role-form-grid">
+            <Field label="Project Name" name="projectName" value={projectForm.projectName} onChange={(event) => updateStateField(setProjectForm, event)} required />
+            <Field label="Client Name" name="clientName" value={projectForm.clientName} onChange={(event) => updateStateField(setProjectForm, event)} required />
+            <Field label="Start Date" name="startDate" type="date" value={projectForm.startDate} onChange={(event) => updateStateField(setProjectForm, event)} />
+            <Field label="Deadline" name="deadline" type="date" value={projectForm.deadline} onChange={(event) => updateStateField(setProjectForm, event)} />
+            <label className="field"><span>Status</span><select name="status" value={projectForm.status} onChange={(event) => updateStateField(setProjectForm, event)}><option>PLANNED</option><option>ACTIVE</option><option>ON_HOLD</option><option>COMPLETED</option></select></label>
+            <TextArea label="Assigned Team" name="assignedTeam" className="span-2" value={projectForm.assignedTeam} onChange={(event) => updateStateField(setProjectForm, event)} />
+          </div>
+          <button className="primary-button" type="submit" disabled={saving}>{saving ? "Saving..." : "Save project"}</button>
+        </form>
+        {renderProjectTable(projects)}
+      </section>
+    );
+  }
+
+  function renderReports() {
+    return (
+      <section className="management-screen">
+        <div className="overview-grid compact-grid">
+          <OverviewCard icon={ClipboardList} tone="teal" label="Total Tasks" value={taskSummary?.total || 0} compact />
+          <OverviewCard icon={Hourglass} tone="amber" label="Pending" value={taskSummary?.pending || 0} compact />
+          <OverviewCard icon={CheckCircle2} tone="green" label="Completed" value={taskSummary?.completed || 0} compact />
+          <OverviewCard icon={XCircle} tone="red" label="High Priority" value={taskSummary?.highPriority || 0} compact />
+        </div>
+        {renderProjectTable(projects)}
+      </section>
+    );
+  }
+
+  function renderProjectTable(rows) {
+    return (
+      <div className="data-card">
+        <table>
+          <thead><tr><th>Project</th><th>Client</th><th>Start</th><th>Deadline</th><th>Status</th><th>Team</th></tr></thead>
+          <tbody>
+            {rows.map((project) => (
+              <tr key={project.id}>
+                <td><strong>{project.projectName}</strong></td>
+                <td>{project.clientName}</td>
+                <td>{formatDate(project.startDate)}</td>
+                <td>{formatDate(project.deadline)}</td>
+                <td><span className={`crm-badge ${statusTone(project.status)}`}>{project.status}</span></td>
+                <td>{project.assignedTeam || "-"}</td>
+              </tr>
+            ))}
+            {rows.length === 0 && <tr><td colSpan="6">No project records yet.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  function renderTeamUpdates() {
+    return (
+      <section className="management-screen">
+        <div className="data-card">
+          <table>
+            <thead><tr><th>Employee</th><th>Date</th><th>Summary</th><th>Blockers</th><th>Hours</th></tr></thead>
+            <tbody>
+              {teamUpdates.map((update) => (
+                <tr key={update.id}><td>{update.userEmail}</td><td>{formatDate(update.updateDate)}</td><td>{update.workSummary}</td><td>{update.blockers || "-"}</td><td>{update.hoursWorked}</td></tr>
+              ))}
+              {teamUpdates.length === 0 && <tr><td colSpan="5">No team updates submitted yet.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    );
+  }
+
+  function renderEmployeePerformance() {
+    return (
+      <section className="management-screen">
+        <div className="data-card">
+          <table>
+            <thead><tr><th>Employee</th><th>Total Tasks</th><th>Completed</th><th>Daily Updates</th><th>Completion</th></tr></thead>
+            <tbody>
+              {performanceRows.map((row) => (
+                <tr key={row.employeeEmail}><td><strong>{row.employeeEmail}</strong></td><td>{row.totalTasks}</td><td>{row.completedTasks}</td><td>{row.submittedUpdates}</td><td>{Math.round(row.completionRate)}%</td></tr>
+              ))}
+              {performanceRows.length === 0 && <tr><td colSpan="5">No performance records yet.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    );
+  }
+
+  function renderCandidates() {
+    return (
+      <section className="management-screen">
+        <form className="form-panel" onSubmit={handleCandidateSubmit}>
+          <div className="section-heading"><h2>Add Candidate</h2></div>
+          <div className="form-grid role-form-grid">
+            <Field label="Name" name="name" value={candidateForm.name} onChange={(event) => updateStateField(setCandidateForm, event)} required />
+            <Field label="Email" name="email" type="email" value={candidateForm.email} onChange={(event) => updateStateField(setCandidateForm, event)} required />
+            <Field label="Phone" name="phone" value={candidateForm.phone} onChange={(event) => updateStateField(setCandidateForm, event)} />
+            <Field label="Skill" name="skill" value={candidateForm.skill} onChange={(event) => updateStateField(setCandidateForm, event)} />
+            <Field label="Experience" name="experience" value={candidateForm.experience} onChange={(event) => updateStateField(setCandidateForm, event)} />
+            <Field label="Resume URL" name="resumeUrl" value={candidateForm.resumeUrl} onChange={(event) => updateStateField(setCandidateForm, event)} />
+            <Field label="Interview Date" name="interviewDate" type="date" value={candidateForm.interviewDate} onChange={(event) => updateStateField(setCandidateForm, event)} />
+            <label className="field"><span>Status</span><select name="status" value={candidateForm.status} onChange={(event) => updateStateField(setCandidateForm, event)}><option>NEW</option><option>SCREENING</option><option>INTERVIEW</option><option>SELECTED</option><option>REJECTED</option></select></label>
+            <TextArea label="Notes" name="notes" className="span-2" value={candidateForm.notes} onChange={(event) => updateStateField(setCandidateForm, event)} />
+          </div>
+          <button className="primary-button" type="submit" disabled={saving}>{saving ? "Saving..." : "Save candidate"}</button>
+        </form>
+        <div className="data-card">
+          <table>
+            <thead><tr><th>Candidate</th><th>Skill</th><th>Experience</th><th>Interview</th><th>Status</th><th>Notes</th></tr></thead>
+            <tbody>
+              {candidates.map((candidate) => (
+                <tr key={candidate.id}><td><strong>{candidate.name}</strong><span>{candidate.email}</span></td><td>{candidate.skill || "-"}</td><td>{candidate.experience || "-"}</td><td>{formatDate(candidate.interviewDate)}</td><td><span className={`crm-badge ${statusTone(candidate.status)}`}>{candidate.status}</span></td><td>{candidate.notes || "-"}</td></tr>
+              ))}
+              {candidates.length === 0 && <tr><td colSpan="6">No candidates yet.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    );
+  }
+
+  function renderDocuments() {
+    return (
+      <section className="management-screen">
+        <form className="form-panel" onSubmit={handleDocumentSubmit}>
+          <div className="section-heading"><h2>Add Document</h2></div>
+          <div className="form-grid role-form-grid">
+            <Field label="Employee ID" name="employeeId" type="number" value={documentForm.employeeId} onChange={(event) => updateStateField(setDocumentForm, event)} required />
+            <Field label="Document Type" name="documentType" value={documentForm.documentType} onChange={(event) => updateStateField(setDocumentForm, event)} required />
+            <Field label="Document URL" name="documentUrl" value={documentForm.documentUrl} onChange={(event) => updateStateField(setDocumentForm, event)} required />
+          </div>
+          <button className="primary-button" type="submit" disabled={saving}>{saving ? "Saving..." : "Save document"}</button>
+        </form>
+        <div className="data-card">
+          <table>
+            <thead><tr><th>Employee ID</th><th>Type</th><th>Document</th><th>Uploaded</th></tr></thead>
+            <tbody>
+              {documents.map((document) => (
+                <tr key={document.id}><td>{document.employeeId}</td><td>{document.documentType}</td><td><a href={document.documentUrl} target="_blank" rel="noreferrer">{document.documentUrl}</a></td><td>{formatDateTime(document.uploadedAt)}</td></tr>
+              ))}
+              {documents.length === 0 && <tr><td colSpan="4">No documents yet.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    );
+  }
+
+  function renderAttendance() {
+    return (
+      <section className="management-screen">
+        <form className="form-panel" onSubmit={handleAttendanceSubmit}>
+          <div className="section-heading"><h2>Add Attendance</h2></div>
+          <div className="form-grid role-form-grid">
+            <Field label="Employee Email" name="userEmail" type="email" value={attendanceForm.userEmail} onChange={(event) => updateStateField(setAttendanceForm, event)} required />
+            <Field label="Date" name="attendanceDate" type="date" value={attendanceForm.attendanceDate} onChange={(event) => updateStateField(setAttendanceForm, event)} required />
+            <label className="field"><span>Status</span><select name="status" value={attendanceForm.status} onChange={(event) => updateStateField(setAttendanceForm, event)}><option>PRESENT</option><option>ABSENT</option><option>HALF_DAY</option><option>REMOTE</option></select></label>
+            <Field label="Check In" name="checkInTime" type="time" value={attendanceForm.checkInTime} onChange={(event) => updateStateField(setAttendanceForm, event)} />
+            <Field label="Check Out" name="checkOutTime" type="time" value={attendanceForm.checkOutTime} onChange={(event) => updateStateField(setAttendanceForm, event)} />
+            <TextArea label="Notes" name="notes" className="span-2" value={attendanceForm.notes} onChange={(event) => updateStateField(setAttendanceForm, event)} />
+          </div>
+          <button className="primary-button" type="submit" disabled={saving}>{saving ? "Saving..." : "Save attendance"}</button>
+        </form>
+        <div className="data-card">
+          <table>
+            <thead><tr><th>Employee</th><th>Date</th><th>Status</th><th>Check In</th><th>Check Out</th><th>Notes</th></tr></thead>
+            <tbody>
+              {attendance.map((row) => (
+                <tr key={row.id}><td>{row.userEmail}</td><td>{formatDate(row.attendanceDate)}</td><td><span className={`crm-badge ${statusTone(row.status)}`}>{row.status}</span></td><td>{formatTime(row.checkInTime)}</td><td>{formatTime(row.checkOutTime)}</td><td>{row.notes || "-"}</td></tr>
+              ))}
+              {attendance.length === 0 && <tr><td colSpan="6">No attendance records yet.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    );
+  }
+
+  function renderHrModule() {
+    return (
+      <section className="management-screen">
+        <div className="overview-grid compact-grid">
+          <OverviewCard icon={UserPlus} tone="teal" label="Candidates" value={candidates.length} compact />
+          <OverviewCard icon={FileArchive} tone="amber" label="Documents" value={documents.length} compact />
+          <OverviewCard icon={CalendarCheck2} tone="green" label="Attendance Records" value={attendance.length} compact />
+        </div>
+        <div className="panel-grid">
+          <article className="department-card"><h2>HR Operations</h2><p>Use Candidates, Documents, Attendance, Leaves, Employees, and Salary from the sidebar for full HR workflows.</p></article>
+          <article className="department-card"><h2>Access Scope</h2><p>HR can manage employee records, leave approvals, salary views, attendance, hiring, and employee documents.</p></article>
+        </div>
+      </section>
+    );
+  }
+
+  function renderRolePermissions() {
+    return (
+      <section className="management-screen">
+        <div className="data-card">
+          <table>
+            <thead><tr><th>User</th><th>Email</th><th>Current Role</th><th>Change Role</th></tr></thead>
+            <tbody>
+              {managedUsers.map((user) => (
+                <tr key={user.id}>
+                  <td><strong>{user.name}</strong><span>ID {user.id}</span></td>
+                  <td>{user.email}</td>
+                  <td><span className="inline-badge">{user.role}</span></td>
+                  <td><select className="status-select" value={user.role} onChange={(event) => updateUserRole(user.id, event.target.value)}>{roles.map((role) => <option key={role}>{role}</option>)}</select></td>
+                </tr>
+              ))}
+              {managedUsers.length === 0 && <tr><td colSpan="4">No users found.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    );
+  }
+
   function renderSettings() {
     return (
       <section className="settings-grid">
@@ -1447,11 +2332,11 @@ function AuthPage({ mode, form, saving, error, onModeChange, onChange, onSubmit 
   );
 }
 
-function Sidebar({ activeView, onSelect }) {
+function Sidebar({ activeView, items, onSelect }) {
   return (
     <aside className="sidebar">
       <nav className="sidebar-nav" aria-label="Main navigation">
-        {navItems.map(({ id, label, icon: Icon }) => <button className={activeView === id ? "active" : ""} key={id} type="button" onClick={() => onSelect(id)}><Icon size={19} aria-hidden="true" /><span>{label}</span></button>)}
+        {items.map(({ id, label, icon: Icon }) => <button className={activeView === id ? "active" : ""} key={id} type="button" onClick={() => onSelect(id)}><Icon size={19} aria-hidden="true" /><span>{label}</span></button>)}
       </nav>
     </aside>
   );
@@ -1494,15 +2379,21 @@ function TextArea({ label, error, className = "", ...props }) {
   return <label className={`field ${className}`}><span>{label}</span><textarea {...props} />{error && <small>{error}</small>}</label>;
 }
 
+function getNavigationForRole(role) {
+  const menu = roleMenus[role] || roleMenus.EMPLOYEE;
+  return menu.map((id) => allNavItems[id]).filter(Boolean);
+}
+
+function getDefaultViewForRole(role) {
+  const menu = roleMenus[role] || roleMenus.EMPLOYEE;
+  return menu[0] || "myTasks";
+}
+
 function readSavedAuth() {
   try {
     const savedAuth = localStorage.getItem(AUTH_STORAGE_KEY);
     if (!savedAuth) return null;
     const parsedAuth = JSON.parse(savedAuth);
-    if (parsedAuth?.user?.role !== "ADMIN") {
-      localStorage.removeItem(AUTH_STORAGE_KEY);
-      return null;
-    }
     return parsedAuth;
   } catch {
     return null;
@@ -1517,7 +2408,23 @@ function getPageSubtitle(view) {
     leaves: "Track leave applications, approvals, rejections, and notification decisions.",
     salary: "View salary, allowance, deduction, and pay-date summaries.",
     crm: "Manage customers, follow-ups, communication history, and support context.",
-    settings: "Review account details and active JWT session information."
+    settings: "Review account details and active JWT session information.",
+    myTasks: "Your assigned work, priority, status, due dates, and ownership.",
+    dailyUpdates: "Submit daily work summaries, blockers, and hours worked.",
+    learningResources: "Training links and learning material shared for MensPingo teams.",
+    profile: "Logged-in user and linked employee profile details.",
+    myAttendance: "Your attendance history and daily attendance status.",
+    myLeave: "Apply for leave and review your own leave request status.",
+    teamTasks: "Assign tasks, update status, and track team progress.",
+    projectManagement: "Manage projects, clients, timelines, status, and assigned teams.",
+    reports: "Team progress reports and task completion summaries.",
+    teamUpdates: "Daily updates submitted by employees.",
+    employeePerformance: "Basic task completion and update submission performance.",
+    candidates: "Manage candidate details, interview status, resume links, and notes.",
+    documents: "Store and review employee document references.",
+    attendance: "View and manage employee attendance records.",
+    hrModule: "HR operations overview for candidates, documents, attendance, leaves, salary, and employees.",
+    rolePermissions: "Manage portal user roles and access permissions."
   };
   return subtitles[view] || "";
 }
@@ -1565,6 +2472,22 @@ function formatTime(value) {
   if (!value) return "-";
   const [hour = "00", minute = "00"] = value.split(":");
   return `${hour}:${minute}`;
+}
+
+function statusTone(status = "") {
+  const normalized = status.toUpperCase();
+  if (["APPROVED", "ACTIVE", "PRESENT", "COMPLETED", "SELECTED"].includes(normalized)) return "green";
+  if (["PENDING", "PLANNED", "SCREENING", "INTERVIEW", "IN_PROGRESS", "REMOTE", "HALF_DAY"].includes(normalized)) return "amber";
+  if (["REJECTED", "BLOCKED", "ABSENT"].includes(normalized)) return "red";
+  return "neutral";
+}
+
+function priorityTone(priority = "") {
+  const normalized = priority.toUpperCase();
+  if (normalized === "HIGH") return "red";
+  if (normalized === "MEDIUM") return "amber";
+  if (normalized === "LOW") return "green";
+  return "neutral";
 }
 
 function normalizeTime(value) {
