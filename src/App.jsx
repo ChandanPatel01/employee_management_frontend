@@ -336,11 +336,17 @@ function App() {
       : { email: authForm.email, password: authForm.password };
 
     try {
-      const data = await request(`${API_PREFIX}/auth/${authMode}`, {
-        method: "POST",
-        body: JSON.stringify(payload),
-        token: null
-      });
+      let data;
+      try {
+        data = await submitAuthRequest(payload);
+      } catch (apiError) {
+        if (!isNetworkError(apiError)) {
+          throw apiError;
+        }
+
+        await wait(2000);
+        data = await submitAuthRequest(payload);
+      }
 
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(data));
       setAuth(data);
@@ -351,6 +357,14 @@ function App() {
     } finally {
       setAuthSaving(false);
     }
+  }
+
+  function submitAuthRequest(payload) {
+    return request(`${API_PREFIX}/auth/${authMode}`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+      token: null
+    });
   }
 
   function handleLogout(showMessage = true) {
@@ -1552,6 +1566,16 @@ function readSavedAuth() {
   } catch {
     return null;
   }
+}
+
+function isNetworkError(error) {
+  return error instanceof TypeError || error?.message === "Failed to fetch";
+}
+
+function wait(milliseconds) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, milliseconds);
+  });
 }
 
 function getPageSubtitle(view) {
