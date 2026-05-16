@@ -23,7 +23,6 @@ import {
   X,
   XCircle
 } from "lucide-react";
-import menspingoLogo from "./assets/menspingo-logo.svg";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 const API_PREFIX = `${API_BASE_URL}/api`;
@@ -105,7 +104,7 @@ const leaveStatusLabels = {
 };
 
 const navItems = [
-  { id: "dashboard", label: "Dashboard", title: "Dashboard Overview", icon: Gauge },
+  { id: "dashboard", label: "Dashboard", title: "Management Dashboard", icon: Gauge },
   { id: "employees", label: "Employees", title: "Manage Employees", icon: Users },
   { id: "departments", label: "Departments", title: "Departments", icon: Building2 },
   { id: "leaves", label: "Leaves", title: "Manage Leaves", icon: CalendarCheck2 },
@@ -1001,12 +1000,20 @@ function App() {
   }
 
   const activeItem = navItems.find((item) => item.id === activeView) || navItems[0];
+  const pageSubtitle = selectedEmployee
+    ? "Employee profile, work details, and quick management actions."
+    : getPageSubtitle(activeView);
 
   return (
     <main className="app-shell">
       <header className="main-header">
-        <div className="header-brand">Employee MS</div>
-        <div className="header-welcome">Welcome, {auth.user?.name || "Admin"}</div>
+        <div className="header-brand">
+          <BrandLogo title="MensPingo EMS" subtitle="Tech Solutions" compact />
+        </div>
+        <div className="header-welcome">
+          <span>Welcome back,</span>
+          <strong>{auth.user?.name || "Admin"}</strong>
+        </div>
         <button className="logout-button" type="button" onClick={() => handleLogout()}>
           Logout
         </button>
@@ -1017,7 +1024,15 @@ function App() {
 
         <section className="content-shell">
           <section className="page-heading">
-            <h1>{selectedEmployee ? "Employee Details" : activeItem.title}</h1>
+            <div className="page-title-stack">
+              {activeView === "dashboard" && !selectedEmployee && (
+                <BrandLogo title="MensPingo EMS" subtitle="Smart Tech. Real Connections." compact />
+              )}
+              <div>
+                <h1>{selectedEmployee ? "Employee Details" : activeItem.title}</h1>
+                <p>{pageSubtitle}</p>
+              </div>
+            </div>
             {!selectedEmployee && (
               <button className="refresh-button" type="button" onClick={refreshActiveView} disabled={loading || crmLoading}>
                 <RefreshCcw size={17} aria-hidden="true" />
@@ -1864,21 +1879,13 @@ function App() {
 
 function AuthPage({ mode, form, saving, error, onModeChange, onChange, onSubmit }) {
   const isSignup = mode === "signup";
-  const serviceChips = ["Backend", "AI Integration", "Cloud", "Microservices"];
+  const serviceChips = ["Employees", "CRM", "Leaves", "Salary", "Departments", "Operations"];
 
   return (
     <main className="auth-shell">
       <section className="auth-brand">
         <div className="auth-brand-card">
-          <div className="brand-lockup" aria-label="MensPingo Tech Solutions">
-            <div className="brand-logo-panel">
-              <img src={menspingoLogo} alt="MensPingo logo" />
-            </div>
-            <div>
-              <span className="brand-script">MensPingo Tech Solutions</span>
-              <span className="brand-tagline">Smart Tech. Real Connections.</span>
-            </div>
-          </div>
+          <BrandLogo title="MensPingo" subtitle="Tech Solutions" large />
 
           <div className="signal-card" aria-hidden="true">
             <span className="signal-node primary" />
@@ -1892,9 +1899,11 @@ function AuthPage({ mode, form, saving, error, onModeChange, onChange, onSubmit 
           <p className="auth-eyebrow">Secure Internal Management Portal</p>
           <h1>MensPingo Employee Management System</h1>
           <p>
-            Streamline HR workflows, team records, payroll insights, and approval processes in one secure MensPingo
-            workspace.
+            Manage employees, departments, salary records, leaves, CRM customers, follow-ups, and company operations
+            in one secure dashboard.
           </p>
+          <p className="auth-built-for">Built for MensPingo Tech Solutions</p>
+          <p className="auth-tagline">Smart Tech. Real Connections.</p>
 
           <div className="service-chips" aria-label="MensPingo services">
             {serviceChips.map((service) => (
@@ -1917,7 +1926,7 @@ function AuthPage({ mode, form, saving, error, onModeChange, onChange, onSubmit 
         </div>
 
         <form onSubmit={onSubmit}>
-          <p className="auth-form-kicker">Employee Management Portal</p>
+          <p className="auth-form-kicker">MensPingo Employee Management System</p>
           <h2>{isSignup ? "Create Account" : "Welcome Back"}</h2>
           {error && <div className="notice error">{error}</div>}
 
@@ -1942,6 +1951,9 @@ function AuthPage({ mode, form, saving, error, onModeChange, onChange, onSubmit 
 function Sidebar({ activeView, onSelect }) {
   return (
     <aside className="sidebar">
+      <div className="sidebar-brand">
+        <BrandLogo title="MensPingo EMS" subtitle="Internal Portal" compact />
+      </div>
       <nav className="sidebar-nav" aria-label="Main navigation">
         {navItems.map(({ id, label, icon: Icon }) => (
           <button
@@ -1956,6 +1968,20 @@ function Sidebar({ activeView, onSelect }) {
         ))}
       </nav>
     </aside>
+  );
+}
+
+function BrandLogo({ title = "MensPingo", subtitle = "Tech Solutions", compact = false, large = false }) {
+  const className = large ? "brand-logo large" : compact ? "brand-logo compact" : "brand-logo";
+
+  return (
+    <div className={className} aria-label={`${title} ${subtitle}`}>
+      <span className="brand-mark">MP</span>
+      <span className="brand-copy">
+        <strong>{title}</strong>
+        <small>{subtitle}</small>
+      </span>
+    </div>
   );
 }
 
@@ -2043,6 +2069,20 @@ function readSavedAuth() {
   } catch {
     return null;
   }
+}
+
+function getPageSubtitle(view) {
+  const subtitles = {
+    dashboard: "Employee, CRM, salary, leave, and department insights for MensPingo Tech Solutions.",
+    employees: "Manage employee records, profiles, departments, compensation, and work status.",
+    departments: "Review department strength, active employees, and payroll distribution.",
+    leaves: "Track leave applications, approvals, rejections, and notification decisions.",
+    salary: "View salary, allowance, deduction, and pay-date summaries.",
+    crm: "Manage customers, follow-ups, communication history, and support context.",
+    settings: "Review account details and active JWT session information."
+  };
+
+  return subtitles[view] || "";
 }
 
 function initials(value = "") {
