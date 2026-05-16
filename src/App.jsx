@@ -330,6 +330,8 @@ function App() {
     event.preventDefault();
     setAuthSaving(true);
     setAuthError("");
+    setError("");
+    setMessage("");
 
     const payload = authMode === "signup"
       ? authForm
@@ -352,6 +354,8 @@ function App() {
       setAuth(data);
       setActiveView("dashboard");
       setAuthForm({ name: "", email: "", password: "" });
+      setError("");
+      setMessage("");
     } catch (apiError) {
       setAuthError(apiError.message);
     } finally {
@@ -983,6 +987,7 @@ function App() {
           setAuthMode(nextMode);
           setAuthError("");
           setError("");
+          setMessage("");
         }}
         onChange={updateAuthField}
         onSubmit={handleAuthSubmit}
