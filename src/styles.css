@@ -1392,6 +1392,8 @@ small {
   --shadow-soft: 0 16px 42px rgba(15, 23, 42, 0.08);
   --shadow-card: 0 12px 30px rgba(15, 23, 42, 0.07);
   --gradient-brand: linear-gradient(135deg, #14B8A6 0%, #2563EB 54%, #7C3AED 100%);
+  /* To use a PNG logo instead, place it at frontend/public/logo.png and change this to url("/logo.png"). */
+  --brand-logo-url: url("/assets/menspingo-logo.svg");
   color: var(--color-text);
   background: var(--color-bg);
 }
@@ -1466,26 +1468,31 @@ body {
 
 .brand-mark {
   align-items: center;
-  background: var(--gradient-brand);
+  background: rgba(255, 255, 255, 0.96);
   border: 1px solid rgba(255, 255, 255, 0.26);
   border-radius: 14px;
   box-shadow: 0 16px 34px rgba(37, 99, 235, 0.32);
-  color: #FFFFFF;
   display: inline-flex;
   flex: 0 0 auto;
-  font-size: 0.96rem;
-  font-weight: 950;
   height: 46px;
   justify-content: center;
-  letter-spacing: 0;
-  width: 46px;
+  overflow: hidden;
+  padding: 6px 9px;
+  width: 132px;
+}
+
+.brand-mark img {
+  display: block;
+  height: 100%;
+  object-fit: contain;
+  width: 100%;
 }
 
 .brand-logo.large .brand-mark {
   border-radius: 20px;
-  font-size: 1.18rem;
   height: 64px;
-  width: 64px;
+  padding: 8px 12px;
+  width: 212px;
 }
 
 .brand-copy {
@@ -1572,16 +1579,19 @@ body {
 }
 
 .content-shell::before {
-  color: rgba(15, 23, 42, 0.028);
-  content: "MP";
-  font-size: clamp(13rem, 31vw, 28rem);
-  font-weight: 950;
-  line-height: 1;
+  background-image: var(--brand-logo-url);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  content: "";
+  height: clamp(150px, 22vw, 300px);
+  opacity: 0.055;
   pointer-events: none;
   position: fixed;
   right: clamp(18px, 5vw, 84px);
   top: 50%;
   transform: translateY(-42%);
+  width: clamp(300px, 42vw, 620px);
   z-index: 0;
 }
 
@@ -2085,6 +2095,24 @@ td span {
 }
 
 @media (max-width: 680px) {
+  .brand-logo.compact {
+    gap: 8px;
+  }
+
+  .brand-logo.compact .brand-mark {
+    height: 40px;
+    padding: 5px 7px;
+    width: 104px;
+  }
+
+  .brand-logo.compact .brand-copy strong {
+    font-size: 0.96rem;
+  }
+
+  .brand-logo.compact .brand-copy small {
+    display: none;
+  }
+
   .brand-copy strong {
     white-space: normal;
   }
