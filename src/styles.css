@@ -2022,6 +2022,10 @@ td span {
   border-radius: 16px;
 }
 
+.auth-tabs.single {
+  grid-template-columns: 1fr;
+}
+
 .auth-tabs button {
   border-radius: 12px;
 }
@@ -2029,6 +2033,25 @@ td span {
 .auth-tabs button.active,
 .auth-card .primary-button {
   background: var(--gradient-brand);
+}
+
+.auth-helper-text {
+  color: #475569;
+  font-size: 0.94rem;
+  font-weight: 800;
+  margin: -6px 0 18px;
+}
+
+.form-help {
+  color: #64748B;
+  font-size: 0.9rem;
+  font-weight: 750;
+  margin: 12px 0 16px;
+}
+
+.full-width-action {
+  margin-top: 12px;
+  width: 100%;
 }
 
 .access-denied-card {

@@ -95,6 +95,19 @@ const emptyCommunicationForm = {
   createdBy: ""
 };
 
+const emptyUserForm = {
+  name: "",
+  email: "",
+  temporaryPassword: "",
+  role: "EMPLOYEE"
+};
+
+const emptyPasswordForm = {
+  currentPassword: "",
+  newPassword: "",
+  confirmPassword: ""
+};
+
 const leaveStatusLabels = {
   PENDING: "Pending",
   APPROVED: "Approved",
@@ -109,23 +122,32 @@ const allNavItems = {
   leaves: { id: "leaves", label: "Leaves", title: "Manage Leaves", icon: CalendarCheck2 },
   salary: { id: "salary", label: "Salary", title: "Salary History", icon: Banknote },
   crm: { id: "crm", label: "CRM Portal", title: "CRM Portal", icon: FileText },
+  users: { id: "users", label: "Users", title: "User Onboarding", icon: UserPlus },
   settings: { id: "settings", label: "Settings", title: "Settings", icon: Settings }
 };
 
-const managementNavItems = [
-  allNavItems.dashboard,
-  allNavItems.employees,
-  allNavItems.departments,
-  allNavItems.leaves,
-  allNavItems.salary,
-  allNavItems.crm,
-  allNavItems.settings
-];
+const roleMenus = {
+  ADMIN: ["dashboard", "employees", "departments", "leaves", "salary", "crm", "users", "settings"],
+  HR: ["dashboard", "users", "employees", "leaves", "salary", "settings"],
+  MANAGER: ["dashboard", "crm", "settings"],
+  EMPLOYEE: ["dashboard", "settings"],
+  INTERN: ["dashboard", "settings"]
+};
+
+const roleTitles = {
+  ADMIN: "Admin Dashboard",
+  HR: "HR Dashboard",
+  MANAGER: "Manager Dashboard",
+  EMPLOYEE: "Employee Dashboard",
+  INTERN: "Employee Dashboard"
+};
+
+const adminCreatableRoles = ["EMPLOYEE", "INTERN", "MANAGER", "HR", "ADMIN"];
+const hrCreatableRoles = ["EMPLOYEE", "INTERN", "MANAGER"];
 
 function App() {
   const [auth, setAuth] = useState(readSavedAuth);
-  const [authMode, setAuthMode] = useState("login");
-  const [authForm, setAuthForm] = useState({ name: "", email: "", password: "" });
+  const [authForm, setAuthForm] = useState({ email: "", password: "" });
   const [authSaving, setAuthSaving] = useState(false);
   const [authError, setAuthError] = useState("");
   const [activeView, setActiveView] = useState("dashboard");
@@ -139,6 +161,8 @@ function App() {
   const [customerForm, setCustomerForm] = useState(emptyCustomerForm);
   const [crmTaskForm, setCrmTaskForm] = useState(emptyCrmTaskForm);
   const [communicationForm, setCommunicationForm] = useState(emptyCommunicationForm);
+  const [userForm, setUserForm] = useState(emptyUserForm);
+  const [passwordForm, setPasswordForm] = useState(emptyPasswordForm);
   const [decisionReasons, setDecisionReasons] = useState({});
   const [editingId, setEditingId] = useState(null);
   const [editingCustomerId, setEditingCustomerId] = useState(null);
@@ -152,17 +176,25 @@ function App() {
   const [crmCustomerSearch, setCrmCustomerSearch] = useState("");
   const [crmTaskFilter, setCrmTaskFilter] = useState("all");
   const [crmCommunicationFilter, setCrmCommunicationFilter] = useState("");
+  const [users, setUsers] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [showEmployeeForm, setShowEmployeeForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [crmLoading, setCrmLoading] = useState(false);
+  const [userLoading, setUserLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [passwordSaving, setPasswordSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [validationErrors, setValidationErrors] = useState({});
 
-  const navItems = managementNavItems;
+  const userRole = getAuthRole(auth);
+  const mustChangePassword = requiresPasswordChange(auth);
+  const navItems = useMemo(() => getNavigationForRole(userRole), [userRole]);
   const canAccessActiveView = navItems.some((item) => item.id === activeView);
+  const canViewPasswordTracking = userRole === "ADMIN";
+  const creatableRoles = userRole === "ADMIN" ? adminCreatableRoles : hrCreatableRoles;
 
   const departments = useMemo(() => {
     return [...new Set(employees.map((employee) => employee.department).filter(Boolean))].sort();
@@ -282,32 +314,38 @@ function App() {
   }, [crmCommunicationFilter, crmCommunications]);
 
   useEffect(() => {
-    if (!auth?.token || navItems.length === 0) {
+    if (!auth?.token || mustChangePassword || navItems.length === 0) {
       return;
     }
 
     if (!navItems.some((item) => item.id === activeView)) {
       setActiveView(navItems[0].id);
     }
-  }, [auth?.token, activeView, navItems]);
+  }, [auth?.token, mustChangePassword, activeView, navItems]);
 
   useEffect(() => {
-    if (auth?.token && canAccessActiveView) {
+    if (auth?.token && !mustChangePassword && canAccessActiveView) {
       loadViewData(activeView);
     }
-  }, [auth?.token, activeView, canAccessActiveView]);
+  }, [auth?.token, mustChangePassword, activeView, canAccessActiveView]);
+
+  useEffect(() => {
+    if (!creatableRoles.includes(userForm.role)) {
+      setUserForm((current) => ({ ...current, role: creatableRoles[0] || "EMPLOYEE" }));
+    }
+  }, [creatableRoles, userForm.role]);
 
   async function request(path, { token = auth?.token, ...options } = {}) {
     const url = path.startsWith("http") ? path : `${API_BASE_URL}${path}`;
     const isFormData = options.body instanceof FormData;
     const response = await fetch(url, {
+      ...options,
       headers: {
         ...(isFormData ? {} : { "Content-Type": "application/json" }),
         Accept: "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...options.headers
-      },
-      ...options
+      }
     });
 
     const text = await response.text();
@@ -333,9 +371,7 @@ function App() {
     setError("");
     setMessage("");
 
-    const payload = authMode === "signup"
-      ? authForm
-      : { email: authForm.email, password: authForm.password };
+    const payload = { email: authForm.email, password: authForm.password };
 
     try {
       let data;
@@ -352,8 +388,8 @@ function App() {
 
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(data));
       setAuth(data);
-      setActiveView("dashboard");
-      setAuthForm({ name: "", email: "", password: "" });
+      setActiveView(getDefaultViewForRole(getAuthRole(data)));
+      setAuthForm({ email: "", password: "" });
       setError("");
       setMessage("");
     } catch (apiError) {
@@ -364,11 +400,35 @@ function App() {
   }
 
   function submitAuthRequest(payload) {
-    return request(`${API_PREFIX}/auth/${authMode}`, {
+    return request(`${API_PREFIX}/auth/login`, {
       method: "POST",
       body: JSON.stringify(payload),
       token: null
     });
+  }
+
+  async function handlePasswordChangeSubmit(event) {
+    event.preventDefault();
+    setPasswordSaving(true);
+    setPasswordError("");
+
+    try {
+      const data = await request(`${API_PREFIX}/auth/change-password`, {
+        method: "POST",
+        body: JSON.stringify(passwordForm)
+      });
+
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(data));
+      setAuth(data);
+      setPasswordForm(emptyPasswordForm);
+      setMessage("");
+      setError("");
+      setActiveView(getDefaultViewForRole(getAuthRole(data)));
+    } catch (apiError) {
+      setPasswordError(apiError.message);
+    } finally {
+      setPasswordSaving(false);
+    }
   }
 
   function handleLogout(showMessage = true) {
@@ -379,17 +439,21 @@ function App() {
     setCrmCustomers([]);
     setCrmTasks([]);
     setCrmCommunications([]);
+    setUsers([]);
     setForm(emptyForm);
     setLeaveForm(emptyLeaveForm);
     setCustomerForm(emptyCustomerForm);
     setCrmTaskForm(emptyCrmTaskForm);
     setCommunicationForm(emptyCommunicationForm);
+    setUserForm(emptyUserForm);
+    setPasswordForm(emptyPasswordForm);
     setEditingId(null);
     setEditingCustomerId(null);
     setEditingCrmTaskId(null);
     setEditingCommunicationId(null);
     setSelectedEmployee(null);
     setShowEmployeeForm(false);
+    setPasswordError("");
     setMessage(showMessage ? "Signed out." : "");
     setError(showMessage ? "" : "Session expired. Please log in again.");
   }
@@ -496,22 +560,44 @@ function App() {
     }
   }
 
+  async function loadUsers() {
+    if (!auth?.token || !["ADMIN", "HR"].includes(userRole)) {
+      return;
+    }
+
+    setUserLoading(true);
+    setError("");
+
+    try {
+      const data = await request(`${API_PREFIX}/users`);
+      setUsers(data);
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setUserLoading(false);
+    }
+  }
+
   async function loadViewData(view = activeView) {
     if (!auth?.token) {
       return;
     }
 
-    if (["dashboard", "employees", "departments", "salary"].includes(view)) {
+    if (["ADMIN", "HR"].includes(userRole) && ["dashboard", "employees", "departments", "salary"].includes(view)) {
       await loadEmployees("");
     }
 
-    if (["dashboard", "leaves"].includes(view)) {
+    if (["ADMIN", "HR"].includes(userRole) && ["dashboard", "leaves"].includes(view)) {
       await loadLeaves();
     }
 
-    if (view === "crm") {
+    if (view === "crm" && ["ADMIN", "MANAGER"].includes(userRole)) {
       await loadCrmData();
       return;
+    }
+
+    if (view === "users") {
+      await loadUsers();
     }
   }
 
@@ -545,6 +631,17 @@ function App() {
   function updateCommunicationField(event) {
     const { name, value } = event.target;
     setCommunicationForm((current) => ({ ...current, [name]: value }));
+  }
+
+  function updateUserField(event) {
+    const { name, value } = event.target;
+    setUserForm((current) => ({ ...current, [name]: value }));
+  }
+
+  function updatePasswordField(event) {
+    const { name, value } = event.target;
+    setPasswordForm((current) => ({ ...current, [name]: value }));
+    setPasswordError("");
   }
 
   function updateDecisionReason(leaveId, value) {
@@ -963,6 +1060,27 @@ function App() {
     }
   }
 
+  async function submitUser(event) {
+    event.preventDefault();
+    setSaving(true);
+    setMessage("");
+    setError("");
+
+    try {
+      await request(`${API_PREFIX}/users`, {
+        method: "POST",
+        body: JSON.stringify(userForm)
+      });
+      setUserForm(emptyUserForm);
+      setMessage("User created with a temporary password.");
+      await loadUsers();
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function refreshActiveView() {
     loadViewData(activeView);
   }
@@ -979,18 +1097,25 @@ function App() {
   if (!auth) {
     return (
       <AuthPage
-        mode={authMode}
         form={authForm}
         saving={authSaving}
         error={authError || error}
-        onModeChange={(nextMode) => {
-          setAuthMode(nextMode);
-          setAuthError("");
-          setError("");
-          setMessage("");
-        }}
         onChange={updateAuthField}
         onSubmit={handleAuthSubmit}
+      />
+    );
+  }
+
+  if (mustChangePassword) {
+    return (
+      <ChangePasswordPage
+        form={passwordForm}
+        saving={passwordSaving}
+        error={passwordError}
+        userName={auth.user?.name || auth.name}
+        onChange={updatePasswordField}
+        onSubmit={handlePasswordChangeSubmit}
+        onLogout={() => handleLogout()}
       />
     );
   }
@@ -999,7 +1124,7 @@ function App() {
   const pageTitle = selectedEmployee
     ? "Employee Details"
     : activeView === "dashboard"
-      ? activeItem.title
+      ? roleTitles[userRole] || activeItem.title
       : activeItem.title;
   const pageSubtitle = selectedEmployee ? "Employee profile, work details, and quick management actions." : getPageSubtitle(activeView);
 
@@ -1028,7 +1153,7 @@ function App() {
               </div>
             </div>
             {!selectedEmployee && (
-              <button className="refresh-button" type="button" onClick={refreshActiveView} disabled={loading || crmLoading}>
+              <button className="refresh-button" type="button" onClick={refreshActiveView} disabled={loading || crmLoading || userLoading}>
                 <RefreshCcw size={17} aria-hidden="true" />
                 Refresh
               </button>
@@ -1060,6 +1185,7 @@ function App() {
       leaves: renderLeaves,
       salary: renderSalary,
       crm: renderCrmPortal,
+      users: renderUsers,
       settings: renderSettings
     };
 
@@ -1077,6 +1203,26 @@ function App() {
   }
 
   function renderDashboard() {
+    if (!["ADMIN", "HR"].includes(userRole)) {
+      return (
+        <section className="dashboard-screen">
+          <div className="overview-grid">
+            <OverviewCard icon={Gauge} tone="teal" label="Role" value={humanize(userRole)} />
+            <OverviewCard icon={ShieldCheck} tone="green" label="Access" value={userRole === "MANAGER" ? "CRM" : "Workspace"} />
+            <OverviewCard icon={CheckCircle2} tone="amber" label="Password" value="Changed" />
+          </div>
+          <div className="panel-grid">
+            <article className="department-card">
+              <h2>{roleTitles[userRole] || "Employee Dashboard"}</h2>
+              <p>{userRole === "MANAGER"
+                ? "Use the CRM Portal to manage customers, follow-ups, and communication history."
+                : "Your account is active. Company modules are assigned by Admin or HR according to your role."}</p>
+            </article>
+          </div>
+        </section>
+      );
+    }
+
     return (
       <section className="dashboard-screen">
         <div className="overview-grid">
@@ -1466,18 +1612,79 @@ function App() {
     );
   }
 
+  function renderUsers() {
+    return (
+      <section className="management-screen">
+        <form className="form-panel" onSubmit={submitUser}>
+          <div className="section-heading">
+            <h2>Create Company User</h2>
+          </div>
+          <div className="form-grid role-form-grid">
+            <Field label="Name" name="name" value={userForm.name} onChange={updateUserField} required />
+            <Field label="Email" name="email" type="email" value={userForm.email} onChange={updateUserField} required />
+            <Field label="Temporary Password" name="temporaryPassword" type="password" value={userForm.temporaryPassword} onChange={updateUserField} minLength={8} required />
+            <label className="field">
+              <span>Role</span>
+              <select name="role" value={userForm.role} onChange={updateUserField} required>
+                {creatableRoles.map((role) => <option key={role} value={role}>{humanize(role)}</option>)}
+              </select>
+            </label>
+          </div>
+          <p className="form-help">New users must change this temporary password before opening their dashboard.</p>
+          <button className="primary-button" type="submit" disabled={saving}>
+            {saving ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <UserPlus size={18} aria-hidden="true" />}
+            Create user
+          </button>
+        </form>
+
+        <div className="data-card">
+          {userLoading ? (
+            <div className="screen-loader"><Loader2 className="spin" size={28} aria-hidden="true" />Loading users...</div>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Created By</th>
+                  {canViewPasswordTracking && <th>Password Changed</th>}
+                  {canViewPasswordTracking && <th>Password Changed At</th>}
+                  {canViewPasswordTracking && <th>Force Change</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((user) => (
+                  <tr key={user.id}>
+                    <td><strong>{user.name}</strong><span>ID {user.id}</span></td>
+                    <td>{user.email}</td>
+                    <td><span className="inline-badge">{humanize(user.role)}</span></td>
+                    <td>{user.createdBy || "-"}</td>
+                    {canViewPasswordTracking && <td>{yesNo(user.passwordChanged)}</td>}
+                    {canViewPasswordTracking && <td>{formatDateTime(user.passwordChangedAt)}</td>}
+                    {canViewPasswordTracking && <td>{yesNo(user.forcePasswordChange)}</td>}
+                  </tr>
+                ))}
+                {users.length === 0 && <tr><td colSpan={canViewPasswordTracking ? 7 : 4}>No users found.</td></tr>}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </section>
+    );
+  }
+
   function renderSettings() {
     return (
       <section className="settings-grid">
-        <article className="data-card account-panel"><div className="avatar large">{initials(auth.user?.name)}</div><div><p>Account</p><h2>{auth.user?.name}</h2><span>{auth.user?.email}</span></div></article>
+        <article className="data-card account-panel"><div className="avatar large">{initials(auth.user?.name)}</div><div><p>Account</p><h2>{auth.user?.name}</h2><span>{auth.user?.email}</span><span className="inline-badge">{humanize(userRole)}</span></div></article>
         <article className="data-card account-panel split"><div><p>Session</p><h2>JWT active</h2><span>{Math.round((auth.expiresIn || 0) / 60)} minutes</span></div><button className="danger-button" type="button" onClick={() => handleLogout()}><LogOut size={18} aria-hidden="true" />Logout</button></article>
       </section>
     );
   }
 }
 
-function AuthPage({ mode, form, saving, error, onModeChange, onChange, onSubmit }) {
-  const isSignup = mode === "signup";
+function AuthPage({ form, saving, error, onChange, onSubmit }) {
   const serviceChips = ["Employees", "CRM", "Leaves", "Salary", "Departments", "Operations"];
 
   return (
@@ -1494,21 +1701,49 @@ function AuthPage({ mode, form, saving, error, onModeChange, onChange, onSubmit 
           <div className="service-chips" aria-label="MensPingo services">{serviceChips.map((service) => <span key={service}>{service}</span>)}</div>
         </div>
       </section>
-      <section className="auth-card" id="auth-panel" aria-label={isSignup ? "Sign up" : "Log in"}>
-        <div className="auth-tabs" role="tablist" aria-label="Authentication mode">
-          <button className={!isSignup ? "active" : ""} type="button" onClick={() => onModeChange("login")}><LogIn size={17} aria-hidden="true" />Login</button>
-          <button className={isSignup ? "active" : ""} type="button" onClick={() => onModeChange("signup")}><UserPlus size={17} aria-hidden="true" />Signup</button>
+      <section className="auth-card" id="auth-panel" aria-label="Log in">
+        <div className="auth-tabs single" role="tablist" aria-label="Authentication mode">
+          <button className="active" type="button"><LogIn size={17} aria-hidden="true" />Login</button>
         </div>
         <form onSubmit={onSubmit}>
           <p className="auth-form-kicker">MensPingo Employee Management System</p>
-          <h2>{isSignup ? "Create Account" : "Welcome Back"}</h2>
+          <h2>Welcome Back</h2>
+          <p className="auth-helper-text">Account access is created by Admin/HR only.</p>
           {error && <div className="notice error">{error}</div>}
           <div className="auth-fields">
-            {isSignup && <Field label="Name" name="name" value={form.name} onChange={onChange} required />}
             <Field label="Email" name="email" type="email" value={form.email} onChange={onChange} required />
-            <Field label="Password" name="password" type="password" value={form.password} onChange={onChange} minLength={isSignup ? 8 : undefined} required />
+            <Field label="Password" name="password" type="password" value={form.password} onChange={onChange} required />
           </div>
-          <button className="primary-button" type="submit" disabled={saving}>{saving ? <Loader2 className="spin" size={18} aria-hidden="true" /> : isSignup ? <UserPlus size={18} aria-hidden="true" /> : <LogIn size={18} aria-hidden="true" />}{isSignup ? "Create account" : "Login"}</button>
+          <button className="primary-button" type="submit" disabled={saving}>{saving ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <LogIn size={18} aria-hidden="true" />}Login</button>
+        </form>
+      </section>
+    </main>
+  );
+}
+
+function ChangePasswordPage({ form, saving, error, userName, onChange, onSubmit, onLogout }) {
+  return (
+    <main className="auth-shell">
+      <section className="auth-brand">
+        <div className="auth-brand-card">
+          <BrandLogo title="MensPingo" subtitle="Tech Solutions" large />
+          <p className="auth-eyebrow">Secure Password Update</p>
+          <h1>Please change your temporary password before continuing.</h1>
+          <p>Welcome {userName || "team member"}. This keeps your MensPingo EMS account secure before opening your dashboard.</p>
+        </div>
+      </section>
+      <section className="auth-card" aria-label="Change password">
+        <form onSubmit={onSubmit}>
+          <p className="auth-form-kicker">Temporary password detected</p>
+          <h2>Change Password</h2>
+          {error && <div className="notice error">{error}</div>}
+          <div className="auth-fields">
+            <Field label="Current password" name="currentPassword" type="password" value={form.currentPassword} onChange={onChange} required />
+            <Field label="New password" name="newPassword" type="password" value={form.newPassword} onChange={onChange} minLength={8} required />
+            <Field label="Confirm password" name="confirmPassword" type="password" value={form.confirmPassword} onChange={onChange} minLength={8} required />
+          </div>
+          <button className="primary-button" type="submit" disabled={saving}>{saving ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <ShieldCheck size={18} aria-hidden="true" />}Update password</button>
+          <button className="ghost-action full-width-action" type="button" onClick={onLogout}>Use another account</button>
         </form>
       </section>
     </main>
@@ -1583,6 +1818,23 @@ function wait(milliseconds) {
   });
 }
 
+function getAuthRole(auth) {
+  return auth?.role || auth?.user?.role || "EMPLOYEE";
+}
+
+function requiresPasswordChange(auth) {
+  return Boolean(auth?.forcePasswordChange || auth?.user?.forcePasswordChange);
+}
+
+function getNavigationForRole(role) {
+  const menu = roleMenus[role] || roleMenus.EMPLOYEE;
+  return menu.map((id) => allNavItems[id]).filter(Boolean);
+}
+
+function getDefaultViewForRole(role) {
+  return (roleMenus[role] || roleMenus.EMPLOYEE)[0] || "dashboard";
+}
+
 function getPageSubtitle(view) {
   const subtitles = {
     dashboard: "Employee, CRM, salary, leave, and department insights for MensPingo Tech Solutions.",
@@ -1591,9 +1843,14 @@ function getPageSubtitle(view) {
     leaves: "Track leave applications, approvals, rejections, and notification decisions.",
     salary: "View salary, allowance, deduction, and pay-date summaries.",
     crm: "Manage customers, follow-ups, communication history, and support context.",
+    users: "Create company accounts, assign roles, and track temporary password status.",
     settings: "Review account details and active JWT session information."
   };
   return subtitles[view] || "";
+}
+
+function yesNo(value) {
+  return value ? "Yes" : "No";
 }
 
 function initials(value = "") {
