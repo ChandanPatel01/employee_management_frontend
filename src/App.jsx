@@ -1025,9 +1025,6 @@ function App() {
         <section className="content-shell">
           <section className="page-heading">
             <div className="page-title-stack">
-              {activeView === "dashboard" && !selectedEmployee && (
-                <BrandLogo title="MensPingo EMS" subtitle="Smart Tech. Real Connections." compact />
-              )}
               <div>
                 <h1>{selectedEmployee ? "Employee Details" : activeItem.title}</h1>
                 <p>{pageSubtitle}</p>
@@ -1951,9 +1948,6 @@ function AuthPage({ mode, form, saving, error, onModeChange, onChange, onSubmit 
 function Sidebar({ activeView, onSelect }) {
   return (
     <aside className="sidebar">
-      <div className="sidebar-brand">
-        <BrandLogo title="MensPingo EMS" subtitle="Internal Portal" compact />
-      </div>
       <nav className="sidebar-nav" aria-label="Main navigation">
         {navItems.map(({ id, label, icon: Icon }) => (
           <button
