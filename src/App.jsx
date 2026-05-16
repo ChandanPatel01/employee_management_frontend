@@ -53,6 +53,44 @@ const emptyLeaveForm = {
   description: ""
 };
 
+const emptyCustomerForm = {
+  companyName: "",
+  contactPerson: "",
+  email: "",
+  phone: "",
+  address: "",
+  projectName: "",
+  projectStatus: "Active",
+  paymentStatus: "Pending",
+  paymentHistory: "",
+  assignedTeam: "",
+  supportTickets: "",
+  previousCommunication: "",
+  notes: ""
+};
+
+const emptyCrmTaskForm = {
+  customerId: "",
+  title: "",
+  description: "",
+  followUpDate: new Date().toISOString().slice(0, 10),
+  followUpTime: "10:00",
+  priority: "MEDIUM",
+  status: "PENDING",
+  assignedTo: "",
+  reminderType: "EMAIL"
+};
+
+const emptyCommunicationForm = {
+  customerId: "",
+  communicationType: "EMAIL",
+  subject: "",
+  summary: "",
+  communicationDate: new Date().toISOString().slice(0, 16),
+  nextAction: "",
+  createdBy: ""
+};
+
 const statusLabels = {
   ACTIVE: "Active",
   INACTIVE: "Inactive",
@@ -72,6 +110,7 @@ const navItems = [
   { id: "departments", label: "Departments", title: "Departments", icon: Building2 },
   { id: "leaves", label: "Leaves", title: "Manage Leaves", icon: CalendarCheck2 },
   { id: "salary", label: "Salary", title: "Salary History", icon: Banknote },
+  { id: "crm", label: "CRM Portal", title: "CRM Portal", icon: FileText },
   { id: "settings", label: "Setting", title: "Setting", icon: Settings }
 ];
 
@@ -84,17 +123,31 @@ function App() {
   const [activeView, setActiveView] = useState("dashboard");
   const [employees, setEmployees] = useState([]);
   const [leaves, setLeaves] = useState([]);
+  const [crmCustomers, setCrmCustomers] = useState([]);
+  const [crmTasks, setCrmTasks] = useState([]);
+  const [crmCommunications, setCrmCommunications] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [leaveForm, setLeaveForm] = useState(emptyLeaveForm);
+  const [customerForm, setCustomerForm] = useState(emptyCustomerForm);
+  const [crmTaskForm, setCrmTaskForm] = useState(emptyCrmTaskForm);
+  const [communicationForm, setCommunicationForm] = useState(emptyCommunicationForm);
   const [decisionReasons, setDecisionReasons] = useState({});
   const [editingId, setEditingId] = useState(null);
+  const [editingCustomerId, setEditingCustomerId] = useState(null);
+  const [editingCrmTaskId, setEditingCrmTaskId] = useState(null);
+  const [editingCommunicationId, setEditingCommunicationId] = useState(null);
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [leaveSearch, setLeaveSearch] = useState("");
   const [salarySearch, setSalarySearch] = useState("");
+  const [crmTab, setCrmTab] = useState("customers");
+  const [crmCustomerSearch, setCrmCustomerSearch] = useState("");
+  const [crmTaskFilter, setCrmTaskFilter] = useState("all");
+  const [crmCommunicationFilter, setCrmCommunicationFilter] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [showEmployeeForm, setShowEmployeeForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [crmLoading, setCrmLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -207,10 +260,33 @@ function App() {
       });
   }, [employees, salarySearch]);
 
+  const filteredCrmCustomers = useMemo(() => {
+    const query = crmCustomerSearch.trim().toLowerCase();
+    if (!query) {
+      return crmCustomers;
+    }
+
+    return crmCustomers.filter((customer) => {
+      return (customer.companyName || "").toLowerCase().includes(query)
+        || (customer.contactPerson || "").toLowerCase().includes(query)
+        || (customer.email || "").toLowerCase().includes(query)
+        || (customer.projectName || "").toLowerCase().includes(query);
+    });
+  }, [crmCustomerSearch, crmCustomers]);
+
+  const filteredCrmCommunications = useMemo(() => {
+    if (!crmCommunicationFilter) {
+      return crmCommunications;
+    }
+
+    return crmCommunications.filter((communication) => String(communication.customerId) === crmCommunicationFilter);
+  }, [crmCommunicationFilter, crmCommunications]);
+
   useEffect(() => {
     if (auth?.token) {
       loadEmployees("");
       loadLeaves();
+      loadCrmData();
     }
   }, [auth?.token]);
 
@@ -284,9 +360,15 @@ function App() {
     setAuth(null);
     setEmployees([]);
     setLeaves([]);
+    setCrmCustomers([]);
+    setCrmTasks([]);
+    setCrmCommunications([]);
     setMessage(showMessage ? "Signed out." : "");
     setError(showMessage ? "" : "Session expired. Please log in again.");
     resetForm();
+    resetCustomerForm();
+    resetCrmTaskForm();
+    resetCommunicationForm();
     setSelectedEmployee(null);
   }
 
@@ -322,6 +404,76 @@ function App() {
     }
   }
 
+  async function loadCrmData() {
+    if (!auth?.token) {
+      return;
+    }
+
+    setCrmLoading(true);
+    setError("");
+
+    try {
+      const [customers, tasks, communications] = await Promise.all([
+        request(`${API_PREFIX}/crm/customers`),
+        request(`${API_PREFIX}/crm/tasks${crmTaskFilter === "all" ? "" : `/${crmTaskFilter}`}`),
+        request(`${API_PREFIX}/crm/communications`)
+      ]);
+      setCrmCustomers(customers);
+      setCrmTasks(tasks);
+      setCrmCommunications(communications);
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setCrmLoading(false);
+    }
+  }
+
+  async function loadCrmCustomers() {
+    if (!auth?.token) {
+      return;
+    }
+
+    try {
+      const data = await request(`${API_PREFIX}/crm/customers`);
+      setCrmCustomers(data);
+    } catch (apiError) {
+      setError(apiError.message);
+    }
+  }
+
+  async function loadCrmTasks(nextFilter = crmTaskFilter) {
+    if (!auth?.token) {
+      return;
+    }
+
+    setCrmTaskFilter(nextFilter);
+    setCrmLoading(true);
+    setError("");
+
+    try {
+      const endpoint = nextFilter === "all" ? `${API_PREFIX}/crm/tasks` : `${API_PREFIX}/crm/tasks/${nextFilter}`;
+      const data = await request(endpoint);
+      setCrmTasks(data);
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setCrmLoading(false);
+    }
+  }
+
+  async function loadCrmCommunications() {
+    if (!auth?.token) {
+      return;
+    }
+
+    try {
+      const data = await request(`${API_PREFIX}/crm/communications`);
+      setCrmCommunications(data);
+    } catch (apiError) {
+      setError(apiError.message);
+    }
+  }
+
   function updateField(event) {
     const { name, value } = event.target;
     setForm((current) => ({ ...current, [name]: value }));
@@ -337,6 +489,21 @@ function App() {
   function updateLeaveField(event) {
     const { name, value } = event.target;
     setLeaveForm((current) => ({ ...current, [name]: value }));
+  }
+
+  function updateCustomerField(event) {
+    const { name, value } = event.target;
+    setCustomerForm((current) => ({ ...current, [name]: value }));
+  }
+
+  function updateCrmTaskField(event) {
+    const { name, value } = event.target;
+    setCrmTaskForm((current) => ({ ...current, [name]: value }));
+  }
+
+  function updateCommunicationField(event) {
+    const { name, value } = event.target;
+    setCommunicationForm((current) => ({ ...current, [name]: value }));
   }
 
   function updateDecisionReason(leaveId, value) {
@@ -537,6 +704,275 @@ function App() {
     }
   }
 
+  function resetCustomerForm() {
+    setEditingCustomerId(null);
+    setCustomerForm(emptyCustomerForm);
+  }
+
+  function resetCrmTaskForm() {
+    setEditingCrmTaskId(null);
+    setCrmTaskForm(emptyCrmTaskForm);
+  }
+
+  function resetCommunicationForm() {
+    setEditingCommunicationId(null);
+    setCommunicationForm({
+      ...emptyCommunicationForm,
+      createdBy: auth.user?.name || ""
+    });
+  }
+
+  async function submitCustomer(event) {
+    event.preventDefault();
+    setSaving(true);
+    setMessage("");
+    setError("");
+
+    try {
+      const path = editingCustomerId
+        ? `${API_PREFIX}/crm/customers/${editingCustomerId}`
+        : `${API_PREFIX}/crm/customers`;
+      const method = editingCustomerId ? "PUT" : "POST";
+      await request(path, {
+        method,
+        body: JSON.stringify(customerForm)
+      });
+
+      setMessage(editingCustomerId ? "Customer updated." : "Customer created.");
+      resetCustomerForm();
+      await loadCrmCustomers();
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function editCustomer(customer) {
+    setCrmTab("customers");
+    setEditingCustomerId(customer.id);
+    setCustomerForm({
+      companyName: customer.companyName || "",
+      contactPerson: customer.contactPerson || "",
+      email: customer.email || "",
+      phone: customer.phone || "",
+      address: customer.address || "",
+      projectName: customer.projectName || "",
+      projectStatus: customer.projectStatus || "",
+      paymentStatus: customer.paymentStatus || "",
+      paymentHistory: customer.paymentHistory || "",
+      assignedTeam: customer.assignedTeam || "",
+      supportTickets: customer.supportTickets || "",
+      previousCommunication: customer.previousCommunication || "",
+      notes: customer.notes || ""
+    });
+    setMessage("");
+    setError("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function deleteCustomer(customer) {
+    const confirmed = window.confirm(`Delete ${customer.companyName}? Related CRM tasks and communications will also be removed.`);
+    if (!confirmed) {
+      return;
+    }
+
+    setMessage("");
+    setError("");
+
+    try {
+      await request(`${API_PREFIX}/crm/customers/${customer.id}`, { method: "DELETE" });
+      setMessage("Customer deleted.");
+      await loadCrmData();
+      if (editingCustomerId === customer.id) {
+        resetCustomerForm();
+      }
+    } catch (apiError) {
+      setError(apiError.message);
+    }
+  }
+
+  async function submitCrmTask(event) {
+    event.preventDefault();
+    setSaving(true);
+    setMessage("");
+    setError("");
+
+    try {
+      const path = editingCrmTaskId
+        ? `${API_PREFIX}/crm/tasks/${editingCrmTaskId}`
+        : `${API_PREFIX}/crm/tasks`;
+      const method = editingCrmTaskId ? "PUT" : "POST";
+      await request(path, {
+        method,
+        body: JSON.stringify({
+          ...crmTaskForm,
+          customerId: Number(crmTaskForm.customerId)
+        })
+      });
+
+      setMessage(editingCrmTaskId ? "Follow-up task updated." : "Follow-up task created.");
+      resetCrmTaskForm();
+      await loadCrmTasks();
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function editCrmTask(task) {
+    setCrmTab("tasks");
+    setEditingCrmTaskId(task.id);
+    setCrmTaskForm({
+      customerId: String(task.customerId || ""),
+      title: task.title || "",
+      description: task.description || "",
+      followUpDate: task.followUpDate || new Date().toISOString().slice(0, 10),
+      followUpTime: normalizeTime(task.followUpTime),
+      priority: task.priority || "MEDIUM",
+      status: task.status || "PENDING",
+      assignedTo: task.assignedTo || "",
+      reminderType: task.reminderType || "EMAIL"
+    });
+    setMessage("");
+    setError("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function updateCrmTaskStatus(task, status) {
+    setSaving(true);
+    setMessage("");
+    setError("");
+
+    try {
+      await request(`${API_PREFIX}/crm/tasks/${task.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          customerId: task.customerId,
+          title: task.title,
+          description: task.description,
+          followUpDate: task.followUpDate,
+          followUpTime: normalizeTime(task.followUpTime),
+          priority: task.priority,
+          status,
+          assignedTo: task.assignedTo,
+          reminderType: task.reminderType
+        })
+      });
+
+      setMessage("Task status updated.");
+      await loadCrmTasks();
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteCrmTask(task) {
+    const confirmed = window.confirm(`Delete follow-up task "${task.title}"?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setMessage("");
+    setError("");
+
+    try {
+      await request(`${API_PREFIX}/crm/tasks/${task.id}`, { method: "DELETE" });
+      setMessage("Follow-up task deleted.");
+      await loadCrmTasks();
+      if (editingCrmTaskId === task.id) {
+        resetCrmTaskForm();
+      }
+    } catch (apiError) {
+      setError(apiError.message);
+    }
+  }
+
+  async function submitCommunication(event) {
+    event.preventDefault();
+    setSaving(true);
+    setMessage("");
+    setError("");
+
+    try {
+      const path = editingCommunicationId
+        ? `${API_PREFIX}/crm/communications/${editingCommunicationId}`
+        : `${API_PREFIX}/crm/communications`;
+      const method = editingCommunicationId ? "PUT" : "POST";
+      await request(path, {
+        method,
+        body: JSON.stringify({
+          ...communicationForm,
+          customerId: Number(communicationForm.customerId),
+          createdBy: communicationForm.createdBy || auth.user?.name || "Admin"
+        })
+      });
+
+      setMessage(editingCommunicationId ? "Communication updated." : "Communication note added.");
+      resetCommunicationForm();
+      await loadCrmCommunications();
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function editCommunication(communication) {
+    setCrmTab("communications");
+    setEditingCommunicationId(communication.id);
+    setCommunicationForm({
+      customerId: String(communication.customerId || ""),
+      communicationType: communication.communicationType || "EMAIL",
+      subject: communication.subject || "",
+      summary: communication.summary || "",
+      communicationDate: normalizeDateTime(communication.communicationDate),
+      nextAction: communication.nextAction || "",
+      createdBy: communication.createdBy || auth.user?.name || ""
+    });
+    setMessage("");
+    setError("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function deleteCommunication(communication) {
+    const confirmed = window.confirm(`Delete communication "${communication.subject}"?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setMessage("");
+    setError("");
+
+    try {
+      await request(`${API_PREFIX}/crm/communications/${communication.id}`, { method: "DELETE" });
+      setMessage("Communication deleted.");
+      await loadCrmCommunications();
+      if (editingCommunicationId === communication.id) {
+        resetCommunicationForm();
+      }
+    } catch (apiError) {
+      setError(apiError.message);
+    }
+  }
+
+  function refreshActiveView() {
+    if (activeView === "crm") {
+      loadCrmData();
+      return;
+    }
+
+    if (activeView === "leaves") {
+      loadLeaves();
+      return;
+    }
+
+    loadEmployees();
+  }
+
   function selectView(view) {
     setActiveView(view);
     setMessage("");
@@ -583,7 +1019,7 @@ function App() {
           <section className="page-heading">
             <h1>{selectedEmployee ? "Employee Details" : activeItem.title}</h1>
             {!selectedEmployee && (
-              <button className="refresh-button" type="button" onClick={() => loadEmployees()} disabled={loading}>
+              <button className="refresh-button" type="button" onClick={refreshActiveView} disabled={loading || crmLoading}>
                 <RefreshCcw size={17} aria-hidden="true" />
                 Refresh
               </button>
@@ -608,6 +1044,7 @@ function App() {
               {activeView === "departments" && renderDepartments()}
               {activeView === "leaves" && renderLeaves()}
               {activeView === "salary" && renderSalary()}
+              {activeView === "crm" && renderCrmPortal()}
               {activeView === "settings" && renderSettings()}
             </>
           )}
@@ -969,6 +1406,435 @@ function App() {
     );
   }
 
+  function renderCrmPortal() {
+    return (
+      <section className="management-screen crm-screen">
+        <div className="crm-tabs" role="tablist" aria-label="CRM sections">
+          <button className={crmTab === "customers" ? "active" : ""} type="button" onClick={() => setCrmTab("customers")}>
+            Customers
+          </button>
+          <button className={crmTab === "tasks" ? "active" : ""} type="button" onClick={() => setCrmTab("tasks")}>
+            Follow-ups
+          </button>
+          <button className={crmTab === "communications" ? "active" : ""} type="button" onClick={() => setCrmTab("communications")}>
+            Communications
+          </button>
+        </div>
+
+        {crmLoading && crmCustomers.length === 0 && crmTasks.length === 0 && crmCommunications.length === 0 ? (
+          <div className="screen-loader">
+            <Loader2 className="spin" size={28} aria-hidden="true" />
+            Loading CRM portal...
+          </div>
+        ) : (
+          <>
+            {crmTab === "customers" && renderCrmCustomers()}
+            {crmTab === "tasks" && renderCrmTasks()}
+            {crmTab === "communications" && renderCrmCommunications()}
+          </>
+        )}
+      </section>
+    );
+  }
+
+  function renderCrmCustomers() {
+    return (
+      <>
+        <form className="form-panel crm-form" onSubmit={submitCustomer}>
+          <div className="section-heading">
+            <h2>{editingCustomerId ? "Update Customer" : "Add Customer"}</h2>
+            {editingCustomerId && (
+              <button className="icon-button" type="button" onClick={resetCustomerForm} aria-label="Cancel customer edit">
+                <X size={18} aria-hidden="true" />
+              </button>
+            )}
+          </div>
+
+          <div className="crm-form-grid">
+            <Field label="Company name" name="companyName" value={customerForm.companyName} onChange={updateCustomerField} required />
+            <Field label="Contact person" name="contactPerson" value={customerForm.contactPerson} onChange={updateCustomerField} required />
+            <Field label="Email" name="email" type="email" value={customerForm.email} onChange={updateCustomerField} required />
+            <Field label="Phone" name="phone" value={customerForm.phone} onChange={updateCustomerField} />
+            <Field label="Project name" name="projectName" value={customerForm.projectName} onChange={updateCustomerField} />
+            <label className="field">
+              <span>Project status</span>
+              <select name="projectStatus" value={customerForm.projectStatus} onChange={updateCustomerField}>
+                <option value="">Select status</option>
+                <option value="Active">Active</option>
+                <option value="On Hold">On Hold</option>
+                <option value="Completed">Completed</option>
+                <option value="Support">Support</option>
+              </select>
+            </label>
+            <label className="field">
+              <span>Payment status</span>
+              <select name="paymentStatus" value={customerForm.paymentStatus} onChange={updateCustomerField}>
+                <option value="">Select status</option>
+                <option value="Paid">Paid</option>
+                <option value="Pending">Pending</option>
+                <option value="Partial">Partial</option>
+                <option value="Overdue">Overdue</option>
+              </select>
+            </label>
+            <Field label="Assigned team" name="assignedTeam" value={customerForm.assignedTeam} onChange={updateCustomerField} />
+            <TextArea label="Address" name="address" value={customerForm.address} onChange={updateCustomerField} />
+            <TextArea label="Payment history" name="paymentHistory" value={customerForm.paymentHistory} onChange={updateCustomerField} />
+            <TextArea label="Support tickets" name="supportTickets" value={customerForm.supportTickets} onChange={updateCustomerField} />
+            <TextArea label="Previous communication" name="previousCommunication" value={customerForm.previousCommunication} onChange={updateCustomerField} />
+            <TextArea label="Notes" name="notes" value={customerForm.notes} onChange={updateCustomerField} className="span-2" />
+          </div>
+
+          <button className="primary-button" type="submit" disabled={saving}>
+            {saving ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <Plus size={18} aria-hidden="true" />}
+            {editingCustomerId ? "Save customer" : "Create customer"}
+          </button>
+        </form>
+
+        <div className="toolbar-row">
+          <label className="table-search crm-search">
+            <Search size={17} aria-hidden="true" />
+            <input
+              value={crmCustomerSearch}
+              onChange={(event) => setCrmCustomerSearch(event.target.value)}
+              placeholder="Search by company or customer"
+              aria-label="Search CRM customers"
+            />
+          </label>
+        </div>
+
+        <div className="data-card">
+          {filteredCrmCustomers.length === 0 ? (
+            <div className="empty-state">No customers found.</div>
+          ) : (
+            <table className="crm-customer-table">
+              <thead>
+                <tr>
+                  <th>Company</th>
+                  <th>Contact</th>
+                  <th>Project</th>
+                  <th>Payment</th>
+                  <th>Team</th>
+                  <th>Updated</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCrmCustomers.map((customer) => (
+                  <tr key={customer.id}>
+                    <td>
+                      <strong>{customer.companyName}</strong>
+                      <span>{customer.notes || "-"}</span>
+                    </td>
+                    <td>
+                      <strong>{customer.contactPerson}</strong>
+                      <span>{customer.email} {customer.phone ? `| ${customer.phone}` : ""}</span>
+                    </td>
+                    <td>
+                      <strong>{customer.projectName || "-"}</strong>
+                      <span>{customer.projectStatus || "-"}</span>
+                    </td>
+                    <td>
+                      <span className={`crm-badge ${badgeTone(customer.paymentStatus)}`}>
+                        {customer.paymentStatus || "Not set"}
+                      </span>
+                    </td>
+                    <td>{customer.assignedTeam || "-"}</td>
+                    <td>{formatDate(customer.updatedAt)}</td>
+                    <td>
+                      <div className="button-strip">
+                        <button className="pill-action green" type="button" onClick={() => editCustomer(customer)}>
+                          <Edit3 size={15} aria-hidden="true" />
+                          Edit
+                        </button>
+                        <button className="pill-action danger-icon" type="button" onClick={() => deleteCustomer(customer)} aria-label={`Delete ${customer.companyName}`}>
+                          <Trash2 size={15} aria-hidden="true" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </>
+    );
+  }
+
+  function renderCrmTasks() {
+    const quickTasks = ["Tomorrow client call", "Send quotation", "Payment reminder", "Demo meeting"];
+
+    return (
+      <>
+        <form className="form-panel crm-form" onSubmit={submitCrmTask}>
+          <div className="section-heading">
+            <h2>{editingCrmTaskId ? "Update Follow-up" : "Add Follow-up Task"}</h2>
+            {editingCrmTaskId && (
+              <button className="icon-button" type="button" onClick={resetCrmTaskForm} aria-label="Cancel task edit">
+                <X size={18} aria-hidden="true" />
+              </button>
+            )}
+          </div>
+
+          <div className="quick-actions" aria-label="Example CRM tasks">
+            {quickTasks.map((taskTitle) => (
+              <button
+                key={taskTitle}
+                className="ghost-action"
+                type="button"
+                onClick={() => setCrmTaskForm((current) => ({ ...current, title: taskTitle }))}
+              >
+                {taskTitle}
+              </button>
+            ))}
+          </div>
+
+          <div className="crm-form-grid compact">
+            <label className="field">
+              <span>Customer</span>
+              <select name="customerId" value={crmTaskForm.customerId} onChange={updateCrmTaskField} required>
+                <option value="">Select customer</option>
+                {crmCustomers.map((customer) => (
+                  <option key={customer.id} value={customer.id}>
+                    {customer.companyName}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Field label="Title" name="title" value={crmTaskForm.title} onChange={updateCrmTaskField} required />
+            <Field label="Follow-up date" name="followUpDate" type="date" value={crmTaskForm.followUpDate} onChange={updateCrmTaskField} required />
+            <Field label="Follow-up time" name="followUpTime" type="time" value={crmTaskForm.followUpTime} onChange={updateCrmTaskField} required />
+            <label className="field">
+              <span>Priority</span>
+              <select name="priority" value={crmTaskForm.priority} onChange={updateCrmTaskField} required>
+                <option value="LOW">Low</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HIGH">High</option>
+                <option value="URGENT">Urgent</option>
+              </select>
+            </label>
+            <label className="field">
+              <span>Status</span>
+              <select name="status" value={crmTaskForm.status} onChange={updateCrmTaskField} required>
+                <option value="PENDING">Pending</option>
+                <option value="IN_PROGRESS">In progress</option>
+                <option value="DONE">Done</option>
+                <option value="CANCELLED">Cancelled</option>
+              </select>
+            </label>
+            <Field label="Assigned to" name="assignedTo" value={crmTaskForm.assignedTo} onChange={updateCrmTaskField} />
+            <label className="field">
+              <span>Reminder type</span>
+              <select name="reminderType" value={crmTaskForm.reminderType} onChange={updateCrmTaskField}>
+                <option value="EMAIL">Email</option>
+                <option value="CALL">Call</option>
+                <option value="WHATSAPP">WhatsApp</option>
+                <option value="IN_APP">In app</option>
+              </select>
+            </label>
+            <TextArea label="Description" name="description" value={crmTaskForm.description} onChange={updateCrmTaskField} className="span-2" />
+          </div>
+
+          <button className="primary-button" type="submit" disabled={saving || crmCustomers.length === 0}>
+            {saving ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <Plus size={18} aria-hidden="true" />}
+            {editingCrmTaskId ? "Save task" : "Create task"}
+          </button>
+        </form>
+
+        <div className="toolbar-row">
+          <div className="crm-filter-row" aria-label="Follow-up filters">
+            {["all", "today", "upcoming"].map((filter) => (
+              <button
+                key={filter}
+                className={crmTaskFilter === filter ? "filter-button active" : "filter-button"}
+                type="button"
+                onClick={() => loadCrmTasks(filter)}
+              >
+                {filter === "all" ? "All" : filter === "today" ? "Today" : "Upcoming"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="data-card">
+          {crmTasks.length === 0 ? (
+            <div className="empty-state">No follow-up tasks found.</div>
+          ) : (
+            <table className="crm-task-table">
+              <thead>
+                <tr>
+                  <th>Task</th>
+                  <th>Customer</th>
+                  <th>Follow-up</th>
+                  <th>Priority</th>
+                  <th>Status</th>
+                  <th>Assigned</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {crmTasks.map((task) => (
+                  <tr key={task.id}>
+                    <td>
+                      <strong>{task.title}</strong>
+                      <span>{task.description || "-"}</span>
+                    </td>
+                    <td>{task.customerName}</td>
+                    <td>
+                      <strong>{formatDate(task.followUpDate)}</strong>
+                      <span>{formatTime(task.followUpTime)} via {task.reminderType || "Reminder"}</span>
+                    </td>
+                    <td>
+                      <span className={`crm-badge ${badgeTone(task.priority)}`}>
+                        {humanize(task.priority)}
+                      </span>
+                    </td>
+                    <td>
+                      <select
+                        className="status-select"
+                        value={task.status}
+                        onChange={(event) => updateCrmTaskStatus(task, event.target.value)}
+                      >
+                        <option value="PENDING">Pending</option>
+                        <option value="IN_PROGRESS">In progress</option>
+                        <option value="DONE">Done</option>
+                        <option value="CANCELLED">Cancelled</option>
+                      </select>
+                    </td>
+                    <td>{task.assignedTo || "-"}</td>
+                    <td>
+                      <div className="button-strip">
+                        <button className="pill-action green" type="button" onClick={() => editCrmTask(task)}>
+                          <Edit3 size={15} aria-hidden="true" />
+                          Edit
+                        </button>
+                        <button className="pill-action danger-icon" type="button" onClick={() => deleteCrmTask(task)} aria-label={`Delete ${task.title}`}>
+                          <Trash2 size={15} aria-hidden="true" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </>
+    );
+  }
+
+  function renderCrmCommunications() {
+    return (
+      <>
+        <form className="form-panel crm-form" onSubmit={submitCommunication}>
+          <div className="section-heading">
+            <h2>{editingCommunicationId ? "Update Communication" : "Add Communication Note"}</h2>
+            {editingCommunicationId && (
+              <button className="icon-button" type="button" onClick={resetCommunicationForm} aria-label="Cancel communication edit">
+                <X size={18} aria-hidden="true" />
+              </button>
+            )}
+          </div>
+
+          <div className="crm-form-grid compact">
+            <label className="field">
+              <span>Customer</span>
+              <select name="customerId" value={communicationForm.customerId} onChange={updateCommunicationField} required>
+                <option value="">Select customer</option>
+                {crmCustomers.map((customer) => (
+                  <option key={customer.id} value={customer.id}>
+                    {customer.companyName}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>Type</span>
+              <select name="communicationType" value={communicationForm.communicationType} onChange={updateCommunicationField} required>
+                <option value="EMAIL">Email</option>
+                <option value="CALL">Call</option>
+                <option value="WHATSAPP">WhatsApp</option>
+                <option value="MEETING">Meeting</option>
+                <option value="NOTE">Note</option>
+              </select>
+            </label>
+            <Field label="Subject" name="subject" value={communicationForm.subject} onChange={updateCommunicationField} required />
+            <Field label="Communication date" name="communicationDate" type="datetime-local" value={communicationForm.communicationDate} onChange={updateCommunicationField} required />
+            <Field label="Next action" name="nextAction" value={communicationForm.nextAction} onChange={updateCommunicationField} />
+            <Field label="Created by" name="createdBy" value={communicationForm.createdBy} onChange={updateCommunicationField} placeholder={auth.user?.name || "Admin"} />
+            <TextArea label="Summary" name="summary" value={communicationForm.summary} onChange={updateCommunicationField} className="span-2" required />
+          </div>
+
+          <button className="primary-button" type="submit" disabled={saving || crmCustomers.length === 0}>
+            {saving ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <Plus size={18} aria-hidden="true" />}
+            {editingCommunicationId ? "Save communication" : "Add communication"}
+          </button>
+        </form>
+
+        <div className="toolbar-row">
+          <label className="field filter-field">
+            <span>Filter by customer</span>
+            <select value={crmCommunicationFilter} onChange={(event) => setCrmCommunicationFilter(event.target.value)}>
+              <option value="">All customers</option>
+              {crmCustomers.map((customer) => (
+                <option key={customer.id} value={customer.id}>
+                  {customer.companyName}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="data-card">
+          {filteredCrmCommunications.length === 0 ? (
+            <div className="empty-state">No communication history found.</div>
+          ) : (
+            <table className="crm-communication-table">
+              <thead>
+                <tr>
+                  <th>Communication</th>
+                  <th>Customer</th>
+                  <th>Date</th>
+                  <th>Next Action</th>
+                  <th>Created By</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCrmCommunications.map((communication) => (
+                  <tr key={communication.id}>
+                    <td>
+                      <strong>{communication.subject}</strong>
+                      <span>
+                        <span className="inline-badge">{humanize(communication.communicationType)}</span>
+                        {communication.summary}
+                      </span>
+                    </td>
+                    <td>{communication.customerName}</td>
+                    <td>{formatDateTime(communication.communicationDate)}</td>
+                    <td>{communication.nextAction || "-"}</td>
+                    <td>{communication.createdBy || "-"}</td>
+                    <td>
+                      <div className="button-strip">
+                        <button className="pill-action green" type="button" onClick={() => editCommunication(communication)}>
+                          <Edit3 size={15} aria-hidden="true" />
+                          Edit
+                        </button>
+                        <button className="pill-action danger-icon" type="button" onClick={() => deleteCommunication(communication)} aria-label={`Delete ${communication.subject}`}>
+                          <Trash2 size={15} aria-hidden="true" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </>
+    );
+  }
+
   function renderSettings() {
     return (
       <section className="settings-grid">
@@ -1150,6 +2016,16 @@ function Field({ label, error, ...props }) {
   );
 }
 
+function TextArea({ label, error, className = "", ...props }) {
+  return (
+    <label className={`field ${className}`}>
+      <span>{label}</span>
+      <textarea {...props} />
+      {error && <small>{error}</small>}
+    </label>
+  );
+}
+
 function readSavedAuth() {
   try {
     const savedAuth = localStorage.getItem(AUTH_STORAGE_KEY);
@@ -1226,6 +2102,71 @@ function formatDate(value) {
     month: "short",
     year: "numeric"
   }).format(new Date(value));
+}
+
+function formatDateTime(value) {
+  if (!value) {
+    return "-";
+  }
+
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(new Date(value));
+}
+
+function formatTime(value) {
+  if (!value) {
+    return "-";
+  }
+
+  const [hour = "00", minute = "00"] = value.split(":");
+  return `${hour}:${minute}`;
+}
+
+function normalizeTime(value) {
+  if (!value) {
+    return "10:00";
+  }
+
+  return value.slice(0, 5);
+}
+
+function normalizeDateTime(value) {
+  if (!value) {
+    return new Date().toISOString().slice(0, 16);
+  }
+
+  return value.slice(0, 16);
+}
+
+function humanize(value = "") {
+  return value
+    .toLowerCase()
+    .split("_")
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function badgeTone(value = "") {
+  const normalized = value.toLowerCase();
+  if (["paid", "done", "completed", "low"].includes(normalized)) {
+    return "green";
+  }
+
+  if (["pending", "medium", "partial", "in_progress", "on hold"].includes(normalized)) {
+    return "amber";
+  }
+
+  if (["overdue", "urgent", "high"].includes(normalized)) {
+    return "red";
+  }
+
+  return "neutral";
 }
 
 export default App;
