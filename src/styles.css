@@ -1394,20 +1394,9 @@ small {
   --gradient-brand: linear-gradient(135deg, #14B8A6 0%, #2563EB 54%, #7C3AED 100%);
   /* To use a PNG logo instead, place it at frontend/public/logo.png and change this to url("/logo.png"). */
   --brand-logo-url: url("/assets/menspingo-logo.svg");
+  --brand-watermark-url: url("/assets/menspingo-watermark.svg");
   color: var(--color-text);
   background: var(--color-bg);
-}
-
-:root[data-appearance="night"] {
-  --color-navy: #F8FAFC;
-  --color-sidebar: #020617;
-  --color-bg: #0B1120;
-  --color-card: #111827;
-  --color-text: #E5E7EB;
-  --color-muted: #A7B3C7;
-  --color-line: #243044;
-  --shadow-soft: 0 16px 42px rgba(0, 0, 0, 0.3);
-  --shadow-card: 0 14px 34px rgba(0, 0, 0, 0.28);
 }
 
 body {
@@ -1417,22 +1406,40 @@ body {
     var(--color-bg);
 }
 
-:root[data-appearance="night"] body {
-  background: #0B1120;
-}
-
 .app-shell {
+  --app-watermark-color: #17213F;
+  --app-watermark-opacity: 0.1;
   background:
     linear-gradient(180deg, rgba(37, 99, 235, 0.04), transparent 280px),
     var(--color-bg);
+  color: var(--color-text);
 }
 
-:root[data-appearance="night"] .main-header {
+.app-shell[data-appearance="night"] {
+  --color-navy: #F8FAFC;
+  --color-sidebar: #020617;
+  --color-bg: #0B1120;
+  --color-card: #111827;
+  --color-text: #F8FAFC;
+  --color-muted: #CBD5E1;
+  --color-line: #334155;
+  --shadow-soft: 0 18px 46px rgba(0, 0, 0, 0.38);
+  --shadow-card: 0 16px 38px rgba(0, 0, 0, 0.34);
+  --app-watermark-color: #E2E8F0;
+  --app-watermark-opacity: 0.055;
+  background:
+    radial-gradient(circle at 92% 8%, rgba(124, 58, 237, 0.14), transparent 30%),
+    radial-gradient(circle at 12% 0%, rgba(20, 184, 166, 0.1), transparent 28%),
+    var(--color-bg);
+}
+
+.app-shell[data-appearance="night"] .main-header {
   background: rgba(2, 6, 23, 0.98);
+  border-bottom-color: rgba(148, 163, 184, 0.24);
 }
 
-:root[data-appearance="night"] .content-shell,
-:root[data-appearance="night"] .page-heading {
+.app-shell[data-appearance="night"] .content-shell,
+.app-shell[data-appearance="night"] .page-heading {
   color: var(--color-text);
 }
 
@@ -1604,20 +1611,24 @@ body {
 }
 
 .content-shell::before {
-  background-image: var(--brand-logo-url);
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: contain;
+  background: var(--app-watermark-color);
   content: "";
-  height: clamp(170px, 24vw, 340px);
-  filter: blur(0.15px) saturate(1);
-  opacity: 0.16;
+  height: clamp(78px, 12vw, 166px);
+  -webkit-mask-image: var(--brand-watermark-url);
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-image: var(--brand-watermark-url);
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  opacity: var(--app-watermark-opacity);
   pointer-events: none;
   position: fixed;
-  left: 45%;
-  top: 55%;
-  transform: translate(-50%, -50%);
-  width: clamp(340px, 46vw, 700px);
+  right: clamp(18px, 6vw, 96px);
+  top: 52%;
+  transform: translateY(-50%);
+  width: clamp(270px, 38vw, 600px);
   z-index: 0;
 }
 
@@ -2051,35 +2062,88 @@ td span {
   width: fit-content;
 }
 
-:root[data-appearance="night"] .data-card,
-:root[data-appearance="night"] .form-panel,
-:root[data-appearance="night"] .employee-detail-card {
-  background: var(--color-card);
-  border-color: rgba(71, 85, 105, 0.72);
+.app-shell[data-appearance="night"] .page-heading {
+  background: rgba(15, 23, 42, 0.94);
+  border-color: rgba(71, 85, 105, 0.82);
 }
 
-:root[data-appearance="night"] .field input,
-:root[data-appearance="night"] .field select,
-:root[data-appearance="night"] .field textarea,
-:root[data-appearance="night"] .status-select {
+.app-shell[data-appearance="night"] h1,
+.app-shell[data-appearance="night"] h2,
+.app-shell[data-appearance="night"] .section-title,
+.app-shell[data-appearance="night"] .overview-card strong,
+.app-shell[data-appearance="night"] td strong {
+  color: #F8FAFC;
+}
+
+.app-shell[data-appearance="night"] .data-card,
+.app-shell[data-appearance="night"] .form-panel,
+.app-shell[data-appearance="night"] .department-card,
+.app-shell[data-appearance="night"] .employee-detail-card {
+  background: rgba(17, 24, 39, 0.96);
+  border-color: rgba(71, 85, 105, 0.78);
+  color: #E5E7EB;
+}
+
+.app-shell[data-appearance="night"] .table-search,
+.app-shell[data-appearance="night"] .field input,
+.app-shell[data-appearance="night"] .field select,
+.app-shell[data-appearance="night"] .field textarea,
+.app-shell[data-appearance="night"] .reason-input,
+.app-shell[data-appearance="night"] .status-select {
+  background: #020617;
+  border-color: #475569;
+  color: #F8FAFC;
+}
+
+.app-shell[data-appearance="night"] .table-search input {
+  color: #F8FAFC;
+}
+
+.app-shell[data-appearance="night"] .table-search input::placeholder,
+.app-shell[data-appearance="night"] .field input::placeholder,
+.app-shell[data-appearance="night"] .field textarea::placeholder {
+  color: #94A3B8;
+}
+
+.app-shell[data-appearance="night"] .field span,
+.app-shell[data-appearance="night"] .page-title-stack p,
+.app-shell[data-appearance="night"] p,
+.app-shell[data-appearance="night"] .overview-card span,
+.app-shell[data-appearance="night"] td,
+.app-shell[data-appearance="night"] td span {
+  color: #CBD5E1;
+}
+
+.app-shell[data-appearance="night"] th {
   background: #0F172A;
-  border-color: #334155;
-  color: var(--color-text);
+  color: #E2E8F0;
 }
 
-:root[data-appearance="night"] .field span,
-:root[data-appearance="night"] .page-title-stack p,
-:root[data-appearance="night"] p {
-  color: var(--color-muted);
+.app-shell[data-appearance="night"] tr {
+  border-bottom-color: rgba(71, 85, 105, 0.68);
 }
 
-:root[data-appearance="night"] .appearance-option {
+.app-shell[data-appearance="night"] .mini-stats span,
+.app-shell[data-appearance="night"] .leave-status.cancelled,
+.app-shell[data-appearance="night"] .crm-badge.neutral {
+  background: #1E293B;
+  color: #E2E8F0;
+}
+
+.app-shell[data-appearance="night"] .refresh-button,
+.app-shell[data-appearance="night"] .ghost-action,
+.app-shell[data-appearance="night"] .icon-button {
+  background: #172554;
+  color: #DBEAFE;
+}
+
+.app-shell[data-appearance="night"] .appearance-option {
   background: #0F172A;
-  border-color: #334155;
-  color: #BFDBFE;
+  border-color: #475569;
+  color: #DBEAFE;
 }
 
-:root[data-appearance="night"] .appearance-option.active {
+.app-shell[data-appearance="night"] .appearance-option.active {
   color: #FFFFFF;
 }
 
@@ -2298,10 +2362,13 @@ td span {
   }
 
   .content-shell::before {
+    height: 92px;
+    left: 50%;
     position: absolute;
-    left: 52%;
+    right: auto;
     top: 180px;
     transform: translateX(-50%);
+    width: min(78vw, 380px);
   }
 }
 

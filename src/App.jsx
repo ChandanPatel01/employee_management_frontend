@@ -439,7 +439,7 @@ function App() {
   }, [auth?.token, mustChangePassword, activeView, navItems]);
 
   useEffect(() => {
-    document.documentElement.dataset.appearance = appearanceMode;
+    document.documentElement.removeAttribute("data-appearance");
     localStorage.setItem(APPEARANCE_STORAGE_KEY, appearanceMode);
   }, [appearanceMode]);
 
@@ -1702,7 +1702,7 @@ function App() {
   const pageSubtitle = selectedEmployee ? "Employee profile, work details, and quick management actions." : getPageSubtitle(activeView);
 
   return (
-    <main className="app-shell">
+    <main className="app-shell" data-appearance={appearanceMode}>
       <header className="main-header">
         <div className="header-brand">
           <BrandLogo title="MensPingo EMS" subtitle="Tech Solutions" compact />
