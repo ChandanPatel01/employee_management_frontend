@@ -9,16 +9,20 @@ import {
   FileText,
   Gauge,
   Hourglass,
+  KeyRound,
   Loader2,
   LogIn,
   LogOut,
+  Moon,
   Plus,
   RefreshCcw,
   Search,
   Settings,
   ShieldCheck,
+  Sun,
   Trash2,
   UserPlus,
+  UserX,
   Users,
   X,
   XCircle
@@ -27,6 +31,7 @@ import {
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 const API_PREFIX = `${API_BASE_URL}/api`;
 const AUTH_STORAGE_KEY = "employee-management-auth";
+const APPEARANCE_STORAGE_KEY = "employee-management-appearance";
 const ACCESS_DENIED_MESSAGE = "Access denied. You do not have permission to access this module.";
 // To swap in your uploaded PNG logo, place it at frontend/public/logo.png and change this to "/logo.png".
 const BRAND_LOGO_SRC = "/assets/menspingo-logo.svg";
@@ -117,6 +122,11 @@ const emptyPasswordForm = {
   confirmPassword: ""
 };
 
+const emptyAdminPasswordResetForm = {
+  userId: "",
+  temporaryPassword: ""
+};
+
 const emptyWorkTaskForm = {
   title: "",
   description: "",
@@ -177,10 +187,10 @@ const allNavItems = {
 const roleMenus = {
   FOUNDER: ["dashboard", "users", "employees", "departments", "tasks", "dailyUpdates", "leaves", "salary", "crm", "reports", "settings", "notifications", "auditLogs"],
   ADMIN: ["dashboard", "users", "employees", "departments", "tasks", "dailyUpdates", "leaves", "salary", "crm", "reports", "settings", "notifications", "auditLogs"],
-  HR: ["dashboard", "employees", "candidates", "documents", "attendance", "leaves", "onboarding", "notifications"],
-  MANAGER: ["dashboard", "teamTasks", "assignTask", "teamDailyUpdates", "projects", "teamLeaves", "reports", "notifications"],
-  EMPLOYEE: ["dashboard", "myTasks", "dailyUpdates", "attendance", "leaves", "documents", "learning", "profile", "notifications"],
-  INTERN: ["dashboard", "myTasks", "dailyUpdates", "attendance", "leaves", "documents", "learning", "profile", "notifications"]
+  HR: ["dashboard", "employees", "candidates", "documents", "attendance", "leaves", "onboarding", "settings", "notifications"],
+  MANAGER: ["dashboard", "teamTasks", "assignTask", "teamDailyUpdates", "projects", "teamLeaves", "reports", "settings", "notifications"],
+  EMPLOYEE: ["dashboard", "myTasks", "dailyUpdates", "attendance", "leaves", "documents", "learning", "profile", "settings", "notifications"],
+  INTERN: ["dashboard", "myTasks", "dailyUpdates", "attendance", "leaves", "documents", "learning", "profile", "settings", "notifications"]
 };
 
 const roleTitles = {
@@ -219,6 +229,11 @@ function App() {
   const [userForm, setUserForm] = useState(emptyUserForm);
   const [userCreationMode, setUserCreationMode] = useState("existing");
   const [passwordForm, setPasswordForm] = useState(emptyPasswordForm);
+  const [settingsPasswordForm, setSettingsPasswordForm] = useState(emptyPasswordForm);
+  const [appearanceMode, setAppearanceMode] = useState(readSavedAppearance);
+  const [settingsUserSearch, setSettingsUserSearch] = useState("");
+  const [settingsBlockUserId, setSettingsBlockUserId] = useState("");
+  const [settingsResetForm, setSettingsResetForm] = useState(emptyAdminPasswordResetForm);
   const [workTaskForm, setWorkTaskForm] = useState(emptyWorkTaskForm);
   const [dailyUpdateForm, setDailyUpdateForm] = useState(emptyDailyUpdateForm);
   const [profileForm, setProfileForm] = useState(emptyProfileForm);
@@ -259,6 +274,7 @@ function App() {
   const canAccessActiveView = navItems.some((item) => item.id === activeView);
   const canViewCompanyModules = ["ADMIN", "FOUNDER", "HR"].includes(userRole);
   const canViewFullCompanyModules = ["ADMIN", "FOUNDER"].includes(userRole);
+  const canManageSettingsUsers = ["ADMIN", "FOUNDER"].includes(userRole);
   const creatableRoles = canViewFullCompanyModules ? adminCreatableRoles : hrCreatableRoles;
   const linkedEmployeeIds = useMemo(() => new Set(users.map((user) => user.employeeId).filter(Boolean)), [users]);
   const availableEmployeesForUser = useMemo(() => employees.filter((employee) => {
@@ -274,6 +290,26 @@ function App() {
   const visibleTasks = ["ADMIN", "FOUNDER"].includes(userRole) ? teamTasks : userRole === "MANAGER" ? teamTasks : myTasks;
   const visibleUpdates = ["ADMIN", "FOUNDER"].includes(userRole) ? teamUpdates : userRole === "MANAGER" ? teamUpdates : myUpdates;
   const unreadNotifications = useMemo(() => notifications.filter((notification) => !notification.read).length, [notifications]);
+  const settingsUserOptions = useMemo(() => {
+    const currentUserId = auth?.user?.id || auth?.id;
+    const query = settingsUserSearch.trim().toLowerCase();
+    return users
+      .filter((user) => String(user.id) !== String(currentUserId))
+      .filter((user) => {
+        if (!query) return true;
+        return (user.name || "").toLowerCase().includes(query)
+          || (user.employeeName || "").toLowerCase().includes(query)
+          || (user.email || "").toLowerCase().includes(query)
+          || (user.employeeCode || "").toLowerCase().includes(query)
+          || (user.role || "").toLowerCase().includes(query);
+      });
+  }, [auth, settingsUserSearch, users]);
+  const selectedBlockUser = useMemo(() => {
+    return users.find((user) => String(user.id) === String(settingsBlockUserId)) || null;
+  }, [settingsBlockUserId, users]);
+  const selectedResetUser = useMemo(() => {
+    return users.find((user) => String(user.id) === String(settingsResetForm.userId)) || null;
+  }, [settingsResetForm.userId, users]);
 
   const departments = useMemo(() => {
     return [...new Set(employees.map((employee) => employee.department).filter(Boolean))].sort();
@@ -401,6 +437,11 @@ function App() {
       setActiveView(navItems[0].id);
     }
   }, [auth?.token, mustChangePassword, activeView, navItems]);
+
+  useEffect(() => {
+    document.documentElement.dataset.appearance = appearanceMode;
+    localStorage.setItem(APPEARANCE_STORAGE_KEY, appearanceMode);
+  }, [appearanceMode]);
 
   useEffect(() => {
     if (auth?.token && !mustChangePassword && canAccessActiveView) {
@@ -814,6 +855,10 @@ function App() {
       await loadUsers();
     }
 
+    if (view === "settings" && canManageSettingsUsers) {
+      await loadUsers();
+    }
+
     if (view === "crm" && ["ADMIN", "FOUNDER", "MANAGER"].includes(userRole)) {
       await loadCrmData();
       return;
@@ -873,6 +918,18 @@ function App() {
     const { name, value } = event.target;
     setPasswordForm((current) => ({ ...current, [name]: value }));
     setPasswordError("");
+  }
+
+  function updateSettingsPasswordField(event) {
+    const { name, value } = event.target;
+    setSettingsPasswordForm((current) => ({ ...current, [name]: value }));
+    setError("");
+  }
+
+  function updateSettingsResetField(event) {
+    const { name, value } = event.target;
+    setSettingsResetForm((current) => ({ ...current, [name]: value }));
+    setError("");
   }
 
   function updateWorkTaskField(event) {
@@ -1523,6 +1580,77 @@ function App() {
       await loadNotifications();
     } catch (apiError) {
       setError(apiError.message);
+    }
+  }
+
+  async function submitSettingsPassword(event) {
+    event.preventDefault();
+    setPasswordSaving(true);
+    setMessage("");
+    setError("");
+
+    try {
+      const data = await request(`${API_PREFIX}/auth/change-password`, {
+        method: "POST",
+        body: JSON.stringify(settingsPasswordForm)
+      });
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(data));
+      setAuth(data);
+      setSettingsPasswordForm(emptyPasswordForm);
+      setMessage("Password changed.");
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setPasswordSaving(false);
+    }
+  }
+
+  async function toggleSelectedUserBlock(event) {
+    event.preventDefault();
+    if (!selectedBlockUser) {
+      setError("Select a user.");
+      return;
+    }
+
+    setSaving(true);
+    setMessage("");
+    setError("");
+
+    try {
+      const action = selectedBlockUser.blocked ? "unblock" : "block";
+      await request(`${API_PREFIX}/users/${selectedBlockUser.id}/${action}`, { method: "PUT" });
+      setMessage(selectedBlockUser.blocked ? "User unblocked." : "User blocked.");
+      await loadUsers();
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function submitAdminPasswordReset(event) {
+    event.preventDefault();
+    if (!selectedResetUser) {
+      setError("Select a user.");
+      return;
+    }
+
+    setSaving(true);
+    setMessage("");
+    setError("");
+
+    try {
+      await request(`${API_PREFIX}/users/${selectedResetUser.id}/reset-password`, {
+        method: "PUT",
+        body: JSON.stringify({ temporaryPassword: settingsResetForm.temporaryPassword })
+      });
+      setSettingsResetForm(emptyAdminPasswordResetForm);
+      setMessage("Temporary password set.");
+      await loadUsers();
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -2585,10 +2713,94 @@ function App() {
   }
 
   function renderSettings() {
+    const userOptions = settingsUserOptions;
+
     return (
-      <section className="settings-grid">
-        <article className="data-card account-panel"><div className="avatar large">{initials(auth.user?.name)}</div><div><p>Account</p><h2>{auth.user?.name}</h2><span>{auth.user?.email}</span><span className="inline-badge">{humanize(userRole)}</span></div></article>
-        <article className="data-card account-panel split"><div><p>Session</p><h2>JWT active</h2><span>{Math.round((auth.expiresIn || 0) / 60)} minutes</span></div><button className="danger-button" type="button" onClick={() => handleLogout()}><LogOut size={18} aria-hidden="true" />Logout</button></article>
+      <section className="settings-screen">
+        <form className="data-card settings-panel" onSubmit={submitSettingsPassword}>
+          <div className="settings-panel-heading">
+            <KeyRound size={22} aria-hidden="true" />
+            <h2>Change Password</h2>
+          </div>
+          <div className="form-grid settings-form-grid">
+            <Field label="Current password" name="currentPassword" type="password" value={settingsPasswordForm.currentPassword} onChange={updateSettingsPasswordField} required />
+            <Field label="New password" name="newPassword" type="password" value={settingsPasswordForm.newPassword} onChange={updateSettingsPasswordField} minLength={8} required />
+            <Field label="Confirm password" name="confirmPassword" type="password" value={settingsPasswordForm.confirmPassword} onChange={updateSettingsPasswordField} minLength={8} required />
+          </div>
+          <button className="primary-button settings-action" type="submit" disabled={passwordSaving}>
+            {passwordSaving ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <ShieldCheck size={18} aria-hidden="true" />}
+            Change Password
+          </button>
+        </form>
+
+        <article className="data-card settings-panel">
+          <div className="settings-panel-heading">
+            <Settings size={22} aria-hidden="true" />
+            <h2>Appearance</h2>
+          </div>
+          <div className="appearance-toggle" aria-label="Appearance mode">
+            <button className={appearanceMode === "day" ? "appearance-option active" : "appearance-option"} type="button" onClick={() => setAppearanceMode("day")}>
+              <Sun size={18} aria-hidden="true" />
+              Day Mode
+            </button>
+            <button className={appearanceMode === "night" ? "appearance-option active" : "appearance-option"} type="button" onClick={() => setAppearanceMode("night")}>
+              <Moon size={18} aria-hidden="true" />
+              Night Mode
+            </button>
+          </div>
+        </article>
+
+        {canManageSettingsUsers && (
+          <>
+            <form className="data-card settings-panel" onSubmit={toggleSelectedUserBlock}>
+              <div className="settings-panel-heading">
+                <UserX size={22} aria-hidden="true" />
+                <h2>Block User</h2>
+              </div>
+              <Field label="Search user" value={settingsUserSearch} onChange={(event) => setSettingsUserSearch(event.target.value)} />
+              <label className="field">
+                <span>User</span>
+                <select value={settingsBlockUserId} onChange={(event) => setSettingsBlockUserId(event.target.value)} required>
+                  <option value="">Select user</option>
+                  {userOptions.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.employeeName || user.name || user.email} - {user.email}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {selectedBlockUser && <span className={`inline-badge ${selectedBlockUser.blocked ? "danger" : ""}`}>{selectedBlockUser.blocked ? "Blocked" : "Active"}</span>}
+              <button className={selectedBlockUser?.blocked ? "primary-button settings-action" : "danger-button settings-action"} type="submit" disabled={saving || !selectedBlockUser}>
+                {saving ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <UserX size={18} aria-hidden="true" />}
+                {selectedBlockUser?.blocked ? "Unblock User" : "Block User"}
+              </button>
+            </form>
+
+            <form className="data-card settings-panel" onSubmit={submitAdminPasswordReset}>
+              <div className="settings-panel-heading">
+                <RefreshCcw size={22} aria-hidden="true" />
+                <h2>Reset User Password</h2>
+              </div>
+              <Field label="Search user" value={settingsUserSearch} onChange={(event) => setSettingsUserSearch(event.target.value)} />
+              <label className="field">
+                <span>User</span>
+                <select name="userId" value={settingsResetForm.userId} onChange={updateSettingsResetField} required>
+                  <option value="">Select user</option>
+                  {userOptions.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.employeeName || user.name || user.email} - {user.email}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Field label="New temporary password" name="temporaryPassword" type="password" value={settingsResetForm.temporaryPassword} onChange={updateSettingsResetField} minLength={8} required />
+              <button className="primary-button settings-action" type="submit" disabled={saving || !selectedResetUser}>
+                {saving ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <RefreshCcw size={18} aria-hidden="true" />}
+                Reset Password
+              </button>
+            </form>
+          </>
+        )}
       </section>
     );
   }
@@ -2715,6 +2927,15 @@ function readSavedAuth() {
   }
 }
 
+function readSavedAppearance() {
+  try {
+    const savedAppearance = localStorage.getItem(APPEARANCE_STORAGE_KEY);
+    return savedAppearance === "night" ? "night" : "day";
+  } catch {
+    return "day";
+  }
+}
+
 function isNetworkError(error) {
   return error instanceof TypeError || error?.message === "Failed to fetch";
 }
@@ -2768,7 +2989,7 @@ function getPageSubtitle(view) {
     onboarding: "Create company accounts and continue onboarding.",
     candidates: "Track hiring and candidate pipeline context.",
     auditLogs: "Review notification-backed workflow events.",
-    settings: "Review account details and active JWT session information."
+    settings: "Manage password and appearance settings."
   };
   return subtitles[view] || "";
 }

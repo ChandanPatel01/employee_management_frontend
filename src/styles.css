@@ -1398,6 +1398,18 @@ small {
   background: var(--color-bg);
 }
 
+:root[data-appearance="night"] {
+  --color-navy: #F8FAFC;
+  --color-sidebar: #020617;
+  --color-bg: #0B1120;
+  --color-card: #111827;
+  --color-text: #E5E7EB;
+  --color-muted: #A7B3C7;
+  --color-line: #243044;
+  --shadow-soft: 0 16px 42px rgba(0, 0, 0, 0.3);
+  --shadow-card: 0 14px 34px rgba(0, 0, 0, 0.28);
+}
+
 body {
   background:
     radial-gradient(circle at 88% 4%, rgba(124, 58, 237, 0.08), transparent 30%),
@@ -1405,10 +1417,23 @@ body {
     var(--color-bg);
 }
 
+:root[data-appearance="night"] body {
+  background: #0B1120;
+}
+
 .app-shell {
   background:
     linear-gradient(180deg, rgba(37, 99, 235, 0.04), transparent 280px),
     var(--color-bg);
+}
+
+:root[data-appearance="night"] .main-header {
+  background: rgba(2, 6, 23, 0.98);
+}
+
+:root[data-appearance="night"] .content-shell,
+:root[data-appearance="night"] .page-heading {
+  color: var(--color-text);
 }
 
 .main-header {
@@ -1955,6 +1980,109 @@ td span {
   color: #1D4ED8;
 }
 
+.inline-badge.danger {
+  background: #FEF2F2;
+  color: #B91C1C;
+}
+
+.settings-screen {
+  align-items: start;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
+}
+
+.settings-panel {
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+}
+
+.settings-panel-heading {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.settings-panel-heading svg {
+  color: var(--color-teal);
+  flex: 0 0 auto;
+}
+
+.settings-panel-heading h2 {
+  font-size: 1.15rem;
+  margin: 0;
+}
+
+.settings-form-grid {
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+
+.appearance-toggle {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.appearance-option {
+  align-items: center;
+  background: #EEF6FF;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 12px;
+  color: #1E3A8A;
+  display: inline-flex;
+  font-weight: 900;
+  gap: 8px;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 14px;
+}
+
+.appearance-option.active {
+  background: var(--gradient-brand);
+  border-color: transparent;
+  box-shadow: 0 14px 26px rgba(37, 99, 235, 0.22);
+  color: #FFFFFF;
+}
+
+.settings-action {
+  margin-top: 0;
+  min-width: 170px;
+  width: fit-content;
+}
+
+:root[data-appearance="night"] .data-card,
+:root[data-appearance="night"] .form-panel,
+:root[data-appearance="night"] .employee-detail-card {
+  background: var(--color-card);
+  border-color: rgba(71, 85, 105, 0.72);
+}
+
+:root[data-appearance="night"] .field input,
+:root[data-appearance="night"] .field select,
+:root[data-appearance="night"] .field textarea,
+:root[data-appearance="night"] .status-select {
+  background: #0F172A;
+  border-color: #334155;
+  color: var(--color-text);
+}
+
+:root[data-appearance="night"] .field span,
+:root[data-appearance="night"] .page-title-stack p,
+:root[data-appearance="night"] p {
+  color: var(--color-muted);
+}
+
+:root[data-appearance="night"] .appearance-option {
+  background: #0F172A;
+  border-color: #334155;
+  color: #BFDBFE;
+}
+
+:root[data-appearance="night"] .appearance-option.active {
+  color: #FFFFFF;
+}
+
 .auth-shell {
   background:
     radial-gradient(circle at 18% 16%, rgba(20, 184, 166, 0.34), transparent 28%),
@@ -2207,7 +2335,12 @@ td span {
 
   .overview-grid,
   .leave-summary-grid,
-  .settings-grid {
+  .settings-grid,
+  .settings-screen {
+    grid-template-columns: 1fr;
+  }
+
+  .appearance-toggle {
     grid-template-columns: 1fr;
   }
 
