@@ -1702,9 +1702,6 @@ function AuthPage({ form, saving, error, onChange, onSubmit }) {
         </div>
       </section>
       <section className="auth-card" id="auth-panel" aria-label="Log in">
-        <div className="auth-tabs single" role="tablist" aria-label="Authentication mode">
-          <button className="active" type="button"><LogIn size={17} aria-hidden="true" />Login</button>
-        </div>
         <form onSubmit={onSubmit}>
           <p className="auth-form-kicker">MensPingo Employee Management System</p>
           <h2>Welcome Back</h2>
