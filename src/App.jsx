@@ -1067,12 +1067,14 @@ function App() {
     setError("");
 
     try {
-      await request(`${API_PREFIX}/users`, {
+      const data = await request(`${API_PREFIX}/users`, {
         method: "POST",
         body: JSON.stringify(userForm)
       });
       setUserForm(emptyUserForm);
-      setMessage("User created with a temporary password.");
+      setMessage(data.message || (data.onboardingEmailSent
+        ? "User created and onboarding email sent."
+        : "User created, but onboarding email could not be sent."));
       await loadUsers();
     } catch (apiError) {
       setError(apiError.message);
