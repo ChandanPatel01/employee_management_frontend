@@ -117,6 +117,28 @@ const emptyPasswordForm = {
   confirmPassword: ""
 };
 
+const emptyWorkTaskForm = {
+  title: "",
+  description: "",
+  assignedToEmployeeId: "",
+  priority: "MEDIUM",
+  deadline: today()
+};
+
+const emptyDailyUpdateForm = {
+  updateText: "",
+  blockers: "",
+  workDate: today()
+};
+
+const emptyProfileForm = {
+  phone: "",
+  photoUrl: "",
+  dateOfBirth: "",
+  gender: "",
+  maritalStatus: ""
+};
+
 const leaveStatusLabels = {
   PENDING: "Pending",
   APPROVED: "Approved",
@@ -126,22 +148,39 @@ const leaveStatusLabels = {
 
 const allNavItems = {
   dashboard: { id: "dashboard", label: "Dashboard", title: "Management Dashboard", icon: Gauge },
+  myTasks: { id: "myTasks", label: "My Tasks", title: "My Tasks", icon: CheckCircle2 },
+  teamTasks: { id: "teamTasks", label: "Team Tasks", title: "Team Tasks", icon: CheckCircle2 },
+  assignTask: { id: "assignTask", label: "Assign Task", title: "Assign Task", icon: Plus },
+  tasks: { id: "tasks", label: "Tasks", title: "Company Tasks", icon: CheckCircle2 },
+  dailyUpdates: { id: "dailyUpdates", label: "Daily Updates", title: "Daily Updates", icon: FileText },
+  teamDailyUpdates: { id: "teamDailyUpdates", label: "Team Daily Updates", title: "Team Daily Updates", icon: FileText },
+  attendance: { id: "attendance", label: "Attendance", title: "Attendance", icon: CalendarCheck2 },
   employees: { id: "employees", label: "Employees", title: "Manage Employees", icon: Users },
+  candidates: { id: "candidates", label: "Candidates", title: "Candidates", icon: Users },
+  documents: { id: "documents", label: "Documents", title: "Documents", icon: FileText },
+  learning: { id: "learning", label: "Learning Resources", title: "Learning Resources", icon: FileText },
+  profile: { id: "profile", label: "Profile", title: "Profile", icon: Users },
+  projects: { id: "projects", label: "Projects", title: "Projects", icon: FileText },
   departments: { id: "departments", label: "Departments", title: "Departments", icon: Building2 },
   leaves: { id: "leaves", label: "Leaves", title: "Manage Leaves", icon: CalendarCheck2 },
+  teamLeaves: { id: "teamLeaves", label: "Team Leaves", title: "Team Leaves", icon: CalendarCheck2 },
+  onboarding: { id: "onboarding", label: "Onboarding", title: "Onboarding", icon: UserPlus },
   salary: { id: "salary", label: "Salary", title: "Salary History", icon: Banknote },
   crm: { id: "crm", label: "CRM Portal", title: "CRM Portal", icon: FileText },
   users: { id: "users", label: "Users", title: "User Onboarding", icon: UserPlus },
-  settings: { id: "settings", label: "Settings", title: "Settings", icon: Settings }
+  reports: { id: "reports", label: "Reports", title: "Reports", icon: FileText },
+  settings: { id: "settings", label: "Settings", title: "Settings", icon: Settings },
+  notifications: { id: "notifications", label: "Notifications", title: "Notifications", icon: FileText },
+  auditLogs: { id: "auditLogs", label: "Audit Logs", title: "Audit Logs", icon: FileText }
 };
 
 const roleMenus = {
-  FOUNDER: ["dashboard", "employees", "departments", "leaves", "salary", "crm", "users", "settings"],
-  ADMIN: ["dashboard", "employees", "departments", "leaves", "salary", "crm", "users", "settings"],
-  HR: ["dashboard", "users", "employees", "leaves", "salary", "settings"],
-  MANAGER: ["dashboard", "crm", "settings"],
-  EMPLOYEE: ["dashboard", "settings"],
-  INTERN: ["dashboard", "settings"]
+  FOUNDER: ["dashboard", "users", "employees", "departments", "tasks", "dailyUpdates", "leaves", "salary", "crm", "reports", "settings", "notifications", "auditLogs"],
+  ADMIN: ["dashboard", "users", "employees", "departments", "tasks", "dailyUpdates", "leaves", "salary", "crm", "reports", "settings", "notifications", "auditLogs"],
+  HR: ["dashboard", "employees", "candidates", "documents", "attendance", "leaves", "onboarding", "notifications"],
+  MANAGER: ["dashboard", "teamTasks", "assignTask", "teamDailyUpdates", "projects", "teamLeaves", "reports", "notifications"],
+  EMPLOYEE: ["dashboard", "myTasks", "dailyUpdates", "attendance", "leaves", "documents", "learning", "profile", "notifications"],
+  INTERN: ["dashboard", "myTasks", "dailyUpdates", "attendance", "leaves", "documents", "learning", "profile", "notifications"]
 };
 
 const roleTitles = {
@@ -167,6 +206,11 @@ function App() {
   const [crmCustomers, setCrmCustomers] = useState([]);
   const [crmTasks, setCrmTasks] = useState([]);
   const [crmCommunications, setCrmCommunications] = useState([]);
+  const [myTasks, setMyTasks] = useState([]);
+  const [teamTasks, setTeamTasks] = useState([]);
+  const [myUpdates, setMyUpdates] = useState([]);
+  const [teamUpdates, setTeamUpdates] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [leaveForm, setLeaveForm] = useState(emptyLeaveForm);
   const [customerForm, setCustomerForm] = useState(emptyCustomerForm);
@@ -175,7 +219,14 @@ function App() {
   const [userForm, setUserForm] = useState(emptyUserForm);
   const [userCreationMode, setUserCreationMode] = useState("existing");
   const [passwordForm, setPasswordForm] = useState(emptyPasswordForm);
+  const [workTaskForm, setWorkTaskForm] = useState(emptyWorkTaskForm);
+  const [dailyUpdateForm, setDailyUpdateForm] = useState(emptyDailyUpdateForm);
+  const [profileForm, setProfileForm] = useState(emptyProfileForm);
+  const [profileEmployeeId, setProfileEmployeeId] = useState(null);
   const [decisionReasons, setDecisionReasons] = useState({});
+  const [taskProgressNotes, setTaskProgressNotes] = useState({});
+  const [taskManagerComments, setTaskManagerComments] = useState({});
+  const [dailyReviewComments, setDailyReviewComments] = useState({});
   const [editingId, setEditingId] = useState(null);
   const [editingCustomerId, setEditingCustomerId] = useState(null);
   const [editingCrmTaskId, setEditingCrmTaskId] = useState(null);
@@ -194,6 +245,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [crmLoading, setCrmLoading] = useState(false);
   const [userLoading, setUserLoading] = useState(false);
+  const [workflowLoading, setWorkflowLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -215,6 +267,13 @@ function App() {
   const selectedUserEmployee = useMemo(() => {
     return employees.find((employee) => String(employee.id) === String(userForm.employeeId)) || null;
   }, [employees, userForm.employeeId]);
+  const currentEmployee = useMemo(() => {
+    const accountEmail = auth?.user?.email || auth?.email || "";
+    return employees.find((employee) => employee.email?.toLowerCase() === accountEmail.toLowerCase()) || employees[0] || null;
+  }, [auth, employees]);
+  const visibleTasks = ["ADMIN", "FOUNDER"].includes(userRole) ? teamTasks : userRole === "MANAGER" ? teamTasks : myTasks;
+  const visibleUpdates = ["ADMIN", "FOUNDER"].includes(userRole) ? teamUpdates : userRole === "MANAGER" ? teamUpdates : myUpdates;
+  const unreadNotifications = useMemo(() => notifications.filter((notification) => !notification.read).length, [notifications]);
 
   const departments = useMemo(() => {
     return [...new Set(employees.map((employee) => employee.department).filter(Boolean))].sort();
@@ -350,6 +409,29 @@ function App() {
   }, [auth?.token, mustChangePassword, activeView, canAccessActiveView]);
 
   useEffect(() => {
+    if (activeView !== "profile" || !currentEmployee || profileEmployeeId === currentEmployee.id) {
+      return;
+    }
+
+    setProfileEmployeeId(currentEmployee.id);
+    setProfileForm({
+      phone: currentEmployee.phone || "",
+      photoUrl: currentEmployee.photoUrl || "",
+      dateOfBirth: currentEmployee.dateOfBirth || "",
+      gender: currentEmployee.gender || "",
+      maritalStatus: currentEmployee.maritalStatus || ""
+    });
+  }, [activeView, currentEmployee, profileEmployeeId]);
+
+  useEffect(() => {
+    if (!["leaves", "teamLeaves"].includes(activeView) || leaveForm.employeeId || employees.length !== 1) {
+      return;
+    }
+
+    setLeaveForm((current) => ({ ...current, employeeId: String(employees[0].id) }));
+  }, [activeView, employees, leaveForm.employeeId]);
+
+  useEffect(() => {
     if (!creatableRoles.includes(userForm.role)) {
       setUserForm((current) => ({ ...current, role: creatableRoles[0] || "EMPLOYEE" }));
     }
@@ -459,6 +541,11 @@ function App() {
     setCrmCustomers([]);
     setCrmTasks([]);
     setCrmCommunications([]);
+    setMyTasks([]);
+    setTeamTasks([]);
+    setMyUpdates([]);
+    setTeamUpdates([]);
+    setNotifications([]);
     setUsers([]);
     setForm(emptyForm);
     setLeaveForm(emptyLeaveForm);
@@ -468,6 +555,10 @@ function App() {
     setUserForm(emptyUserForm);
     setUserCreationMode("existing");
     setPasswordForm(emptyPasswordForm);
+    setWorkTaskForm(emptyWorkTaskForm);
+    setDailyUpdateForm(emptyDailyUpdateForm);
+    setProfileForm(emptyProfileForm);
+    setProfileEmployeeId(null);
     setEditingId(null);
     setEditingCustomerId(null);
     setEditingCrmTaskId(null);
@@ -600,7 +691,7 @@ function App() {
   }
 
   async function loadEmployeeOptions() {
-    if (!auth?.token || !["ADMIN", "FOUNDER", "HR"].includes(userRole)) {
+    if (!auth?.token) {
       return;
     }
 
@@ -612,17 +703,115 @@ function App() {
     }
   }
 
+  async function loadMyTasks() {
+    if (!auth?.token) return;
+    setWorkflowLoading(true);
+    setError("");
+    try {
+      const data = await request(`${API_PREFIX}/tasks/my`);
+      setMyTasks(data);
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setWorkflowLoading(false);
+    }
+  }
+
+  async function loadTeamTasks() {
+    if (!auth?.token) return;
+    setWorkflowLoading(true);
+    setError("");
+    try {
+      const data = await request(`${API_PREFIX}/tasks/team`);
+      setTeamTasks(data);
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setWorkflowLoading(false);
+    }
+  }
+
+  async function loadMyUpdates() {
+    if (!auth?.token) return;
+    setWorkflowLoading(true);
+    setError("");
+    try {
+      const data = await request(`${API_PREFIX}/daily-updates/my`);
+      setMyUpdates(data);
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setWorkflowLoading(false);
+    }
+  }
+
+  async function loadTeamUpdates() {
+    if (!auth?.token) return;
+    setWorkflowLoading(true);
+    setError("");
+    try {
+      const data = await request(`${API_PREFIX}/daily-updates/team`);
+      setTeamUpdates(data);
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setWorkflowLoading(false);
+    }
+  }
+
+  async function loadNotifications() {
+    if (!auth?.token) return;
+    try {
+      const data = await request(`${API_PREFIX}/notifications/my`);
+      setNotifications(data);
+    } catch (apiError) {
+      setError(apiError.message);
+    }
+  }
+
   async function loadViewData(view = activeView) {
     if (!auth?.token) {
       return;
     }
 
-    if (canViewCompanyModules && ["dashboard", "employees", "departments", "salary"].includes(view)) {
+    if (canViewCompanyModules && ["dashboard", "employees", "departments", "salary", "users", "onboarding"].includes(view)) {
       await loadEmployees("");
     }
 
-    if (canViewCompanyModules && ["dashboard", "leaves"].includes(view)) {
+    if (["assignTask", "leaves", "teamLeaves", "profile", "attendance", "documents", "projects", "reports"].includes(view)) {
+      await loadEmployeeOptions();
+    }
+
+    if (["dashboard", "leaves", "teamLeaves"].includes(view)) {
       await loadLeaves();
+    }
+
+    if (["dashboard", "myTasks"].includes(view) && ["EMPLOYEE", "INTERN"].includes(userRole)) {
+      await loadMyTasks();
+    }
+
+    if (["dashboard", "teamTasks", "assignTask", "tasks"].includes(view) && ["MANAGER", "ADMIN", "FOUNDER"].includes(userRole)) {
+      await loadTeamTasks();
+    }
+
+    if (["dashboard", "dailyUpdates"].includes(view) && ["EMPLOYEE", "INTERN"].includes(userRole)) {
+      await loadMyUpdates();
+    }
+
+    if (["dashboard", "teamDailyUpdates", "dailyUpdates"].includes(view) && ["MANAGER", "ADMIN", "FOUNDER"].includes(userRole)) {
+      await loadTeamUpdates();
+    }
+
+    if (["dashboard", "notifications"].includes(view)) {
+      await loadNotifications();
+    }
+
+    if (view === "dashboard" && ["ADMIN", "FOUNDER"].includes(userRole)) {
+      await loadCrmData();
+    }
+
+    if (view === "dashboard" && ["ADMIN", "FOUNDER", "HR"].includes(userRole)) {
+      await loadUsers();
     }
 
     if (view === "crm" && ["ADMIN", "FOUNDER", "MANAGER"].includes(userRole)) {
@@ -630,7 +819,7 @@ function App() {
       return;
     }
 
-    if (view === "users") {
+    if (["users", "onboarding"].includes(view)) {
       await Promise.all([loadUsers(), loadEmployeeOptions()]);
     }
   }
@@ -686,6 +875,21 @@ function App() {
     setPasswordError("");
   }
 
+  function updateWorkTaskField(event) {
+    const { name, value } = event.target;
+    setWorkTaskForm((current) => ({ ...current, [name]: value }));
+  }
+
+  function updateDailyUpdateField(event) {
+    const { name, value } = event.target;
+    setDailyUpdateForm((current) => ({ ...current, [name]: value }));
+  }
+
+  function updateProfileField(event) {
+    const { name, value } = event.target;
+    setProfileForm((current) => ({ ...current, [name]: value }));
+  }
+
   function updateDecisionReason(leaveId, value) {
     setDecisionReasons((current) => ({ ...current, [leaveId]: value }));
   }
@@ -702,7 +906,10 @@ function App() {
     setError("");
 
     try {
-      const data = await request(`${API_PREFIX}/uploads/employee-photos`, { method: "POST", body });
+      const uploadPath = editingId
+        ? `${API_PREFIX}/uploads/employee-photos?employeeId=${encodeURIComponent(editingId)}`
+        : `${API_PREFIX}/uploads/employee-photos`;
+      const data = await request(uploadPath, { method: "POST", body });
       setForm((current) => ({ ...current, photoUrl: data.photoUrl }));
     } catch (apiError) {
       setError(apiError.message || "Please select another image.");
@@ -1158,6 +1365,167 @@ function App() {
     };
   }
 
+  async function submitWorkTask(event) {
+    event.preventDefault();
+    setSaving(true);
+    setMessage("");
+    setError("");
+    try {
+      await request(`${API_PREFIX}/tasks`, {
+        method: "POST",
+        body: JSON.stringify({
+          ...workTaskForm,
+          assignedToEmployeeId: Number(workTaskForm.assignedToEmployeeId)
+        })
+      });
+      setWorkTaskForm(emptyWorkTaskForm);
+      setMessage("Task assigned.");
+      await loadTeamTasks();
+      await loadNotifications();
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function updateWorkTaskStatus(task, status) {
+    setSaving(true);
+    setMessage("");
+    setError("");
+    try {
+      await request(`${API_PREFIX}/tasks/${task.id}/status`, {
+        method: "PUT",
+        body: JSON.stringify({
+          status,
+          progressNote: taskProgressNotes[task.id] || task.progressNote || ""
+        })
+      });
+      setTaskProgressNotes((current) => ({ ...current, [task.id]: "" }));
+      setMessage("Task status updated.");
+      await Promise.all([loadMyTasks(), ["MANAGER", "ADMIN", "FOUNDER"].includes(userRole) ? loadTeamTasks() : Promise.resolve(), loadNotifications()]);
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function updateWorkTaskComment(task) {
+    setSaving(true);
+    setMessage("");
+    setError("");
+    try {
+      await request(`${API_PREFIX}/tasks/${task.id}/comment`, {
+        method: "PUT",
+        body: JSON.stringify({ managerComment: taskManagerComments[task.id] || task.managerComment || "" })
+      });
+      setTaskManagerComments((current) => ({ ...current, [task.id]: "" }));
+      setMessage("Manager comment saved.");
+      await Promise.all([loadTeamTasks(), loadNotifications()]);
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteWorkTask(task) {
+    const confirmed = window.confirm(`Delete task "${task.title}"?`);
+    if (!confirmed) return;
+    setMessage("");
+    setError("");
+    try {
+      await request(`${API_PREFIX}/tasks/${task.id}`, { method: "DELETE" });
+      setMessage("Task deleted.");
+      await loadTeamTasks();
+    } catch (apiError) {
+      setError(apiError.message);
+    }
+  }
+
+  async function submitDailyUpdate(event) {
+    event.preventDefault();
+    setSaving(true);
+    setMessage("");
+    setError("");
+    try {
+      await request(`${API_PREFIX}/daily-updates`, {
+        method: "POST",
+        body: JSON.stringify(dailyUpdateForm)
+      });
+      setDailyUpdateForm(emptyDailyUpdateForm);
+      setMessage("Daily update submitted.");
+      await Promise.all([loadMyUpdates(), loadNotifications()]);
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function reviewDailyUpdate(update) {
+    setSaving(true);
+    setMessage("");
+    setError("");
+    try {
+      await request(`${API_PREFIX}/daily-updates/${update.id}/review`, {
+        method: "PUT",
+        body: JSON.stringify({ managerComment: dailyReviewComments[update.id] || update.managerComment || "" })
+      });
+      setDailyReviewComments((current) => ({ ...current, [update.id]: "" }));
+      setMessage("Daily update reviewed.");
+      await Promise.all([loadTeamUpdates(), loadNotifications()]);
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function submitProfile(event) {
+    event.preventDefault();
+    if (!currentEmployee) {
+      setError("Employee profile was not found.");
+      return;
+    }
+
+    setSaving(true);
+    setMessage("");
+    setError("");
+
+    try {
+      await request(`${API_PREFIX}/employees/${currentEmployee.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ ...currentEmployee, ...profileForm })
+      });
+      setMessage("Profile updated.");
+      await loadEmployeeOptions();
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function markNotificationRead(notification) {
+    try {
+      await request(`${API_PREFIX}/notifications/${notification.id}/read`, { method: "PUT" });
+      await loadNotifications();
+    } catch (apiError) {
+      setError(apiError.message);
+    }
+  }
+
+  async function markAllNotificationsRead() {
+    try {
+      await request(`${API_PREFIX}/notifications/read-all`, { method: "PUT" });
+      await loadNotifications();
+    } catch (apiError) {
+      setError(apiError.message);
+    }
+  }
+
   function refreshActiveView() {
     loadViewData(activeView);
   }
@@ -1230,7 +1598,7 @@ function App() {
               </div>
             </div>
             {!selectedEmployee && (
-              <button className="refresh-button" type="button" onClick={refreshActiveView} disabled={loading || crmLoading || userLoading}>
+              <button className="refresh-button" type="button" onClick={refreshActiveView} disabled={loading || crmLoading || userLoading || workflowLoading}>
                 <RefreshCcw size={17} aria-hidden="true" />
                 Refresh
               </button>
@@ -1257,12 +1625,29 @@ function App() {
   function renderActiveView() {
     const views = {
       dashboard: renderDashboard,
+      myTasks: renderMyTasks,
+      teamTasks: renderTeamTasks,
+      assignTask: renderAssignTask,
+      tasks: renderTeamTasks,
+      dailyUpdates: ["EMPLOYEE", "INTERN"].includes(userRole) ? renderMyDailyUpdates : renderTeamDailyUpdates,
+      teamDailyUpdates: renderTeamDailyUpdates,
+      attendance: renderAttendance,
       employees: renderEmployees,
+      candidates: renderPlaceholder,
+      documents: renderDocuments,
+      learning: renderLearningResources,
+      profile: renderProfile,
+      projects: renderProjects,
       departments: renderDepartments,
       leaves: renderLeaves,
+      teamLeaves: renderLeaves,
+      onboarding: renderUsers,
       salary: renderSalary,
       crm: renderCrmPortal,
       users: renderUsers,
+      reports: renderReports,
+      notifications: renderNotifications,
+      auditLogs: renderAuditLogs,
       settings: renderSettings
     };
 
@@ -1280,21 +1665,54 @@ function App() {
   }
 
   function renderDashboard() {
-    if (!canViewCompanyModules) {
+    if (["EMPLOYEE", "INTERN"].includes(userRole)) {
       return (
         <section className="dashboard-screen">
           <div className="overview-grid">
-            <OverviewCard icon={Gauge} tone="teal" label="Role" value={humanize(userRole)} />
-            <OverviewCard icon={ShieldCheck} tone="green" label="Access" value={userRole === "MANAGER" ? "CRM" : "Workspace"} />
-            <OverviewCard icon={CheckCircle2} tone="amber" label="Password" value="Changed" />
+            <OverviewCard icon={Hourglass} tone="amber" label="My Pending Tasks" value={myTasks.filter((task) => task.status !== "COMPLETED").length} />
+            <OverviewCard icon={CheckCircle2} tone="green" label="Completed Tasks" value={myTasks.filter((task) => task.status === "COMPLETED").length} />
+            <OverviewCard icon={FileText} tone="teal" label="Today Update Status" value={myUpdates.some((update) => update.workDate === today()) ? "Submitted" : "Pending"} />
+            <OverviewCard icon={CalendarCheck2} tone="red" label="Leave Status" value={leaveStats.pending} />
+            <OverviewCard icon={FileText} tone="teal" label="Notifications" value={unreadNotifications} />
           </div>
           <div className="panel-grid">
             <article className="department-card">
               <h2>{roleTitles[userRole] || "Employee Dashboard"}</h2>
-              <p>{userRole === "MANAGER"
-                ? "Use the CRM Portal to manage customers, follow-ups, and communication history."
-                : "Your account is active. Company modules are assigned by Admin or HR according to your role."}</p>
+              <p>Track your assigned work, daily updates, leave requests, and company notifications.</p>
             </article>
+          </div>
+        </section>
+      );
+    }
+
+    if (userRole === "MANAGER") {
+      return (
+        <section className="dashboard-screen">
+          <div className="overview-grid">
+            <OverviewCard icon={Hourglass} tone="amber" label="Team Pending Tasks" value={teamTasks.filter((task) => task.status !== "COMPLETED").length} />
+            <OverviewCard icon={CheckCircle2} tone="green" label="Completed Tasks" value={teamTasks.filter((task) => task.status === "COMPLETED").length} />
+            <OverviewCard icon={FileText} tone="teal" label="Updates Pending Review" value={teamUpdates.filter((update) => update.status === "SUBMITTED").length} />
+            <OverviewCard icon={XCircle} tone="red" label="Blocked Tasks" value={teamTasks.filter((task) => task.status === "BLOCKED").length} />
+          </div>
+          <div className="panel-grid">
+            <article className="department-card">
+              <h2>Manager Workspace</h2>
+              <p>Assign tasks, review team updates, track blockers, and manage team leave decisions.</p>
+            </article>
+          </div>
+        </section>
+      );
+    }
+
+    if (userRole === "HR") {
+      return (
+        <section className="dashboard-screen">
+          <div className="overview-grid">
+            <OverviewCard icon={Users} tone="teal" label="Total Employees" value={stats.total} />
+            <OverviewCard icon={UserPlus} tone="green" label="New Joiners" value={users.length} />
+            <OverviewCard icon={Hourglass} tone="amber" label="Pending Leaves" value={leaveStats.pending} />
+            <OverviewCard icon={CalendarCheck2} tone="red" label="Attendance Summary" value="Active" />
+            <OverviewCard icon={FileText} tone="teal" label="Candidate Pipeline" value="Open" />
           </div>
         </section>
       );
@@ -1303,9 +1721,12 @@ function App() {
     return (
       <section className="dashboard-screen">
         <div className="overview-grid">
-          <OverviewCard icon={Users} tone="teal" label="Total Employees" value={stats.total} />
-          <OverviewCard icon={Building2} tone="amber" label="Total Departments" value={stats.departmentsCount} />
-          <OverviewCard icon={Banknote} tone="red" label="Total Salary" value={formatCurrency(stats.payroll)} />
+          <OverviewCard icon={Gauge} tone="teal" label="Company Analytics" value={stats.total} />
+          <OverviewCard icon={Users} tone="green" label="Employee Stats" value={stats.total} />
+          <OverviewCard icon={CheckCircle2} tone="amber" label="Task Stats" value={teamTasks.length} />
+          <OverviewCard icon={CalendarCheck2} tone="red" label="Leave Stats" value={leaveStats.applied} />
+          <OverviewCard icon={FileText} tone="teal" label="CRM Stats" value={crmCustomers.length} />
+          <OverviewCard icon={Banknote} tone="green" label="Revenue/Reports" value={formatCurrency(stats.payroll)} />
         </div>
         <h2 className="section-title centered">Leave Details</h2>
         <div className="leave-summary-grid">
@@ -1313,6 +1734,372 @@ function App() {
           <OverviewCard icon={CheckCircle2} tone="green" label="Leave Approved" value={leaveStats.approved} compact />
           <OverviewCard icon={Hourglass} tone="amber" label="Leave Pending" value={leaveStats.pending} compact />
           <OverviewCard icon={XCircle} tone="red" label="Leave Rejected" value={leaveStats.rejected + leaveStats.cancelled} compact />
+        </div>
+      </section>
+    );
+  }
+
+  function renderMyTasks() {
+    return (
+      <section className="management-screen">
+        {workflowLoading && myTasks.length === 0 ? <div className="screen-loader"><Loader2 className="spin" size={28} aria-hidden="true" />Loading tasks...</div> : renderTaskTable(myTasks, false)}
+      </section>
+    );
+  }
+
+  function renderTeamTasks() {
+    return (
+      <section className="management-screen">
+        {["ADMIN", "FOUNDER"].includes(userRole) && renderAssignTaskForm()}
+        {workflowLoading && teamTasks.length === 0 ? <div className="screen-loader"><Loader2 className="spin" size={28} aria-hidden="true" />Loading team tasks...</div> : renderTaskTable(teamTasks, true)}
+      </section>
+    );
+  }
+
+  function renderAssignTask() {
+    return (
+      <section className="management-screen">
+        {renderAssignTaskForm()}
+        {renderTaskTable(teamTasks, true)}
+      </section>
+    );
+  }
+
+  function renderAssignTaskForm() {
+    return (
+      <form className="form-panel" onSubmit={submitWorkTask}>
+        <div className="section-heading"><h2>Assign Task</h2></div>
+        <div className="form-grid">
+          <Field label="Title" name="title" value={workTaskForm.title} onChange={updateWorkTaskField} required />
+          <label className="field">
+            <span>Assign to</span>
+            <select name="assignedToEmployeeId" value={workTaskForm.assignedToEmployeeId} onChange={updateWorkTaskField} required>
+              <option value="">Select employee</option>
+              {employees.map((employee) => <option key={employee.id} value={employee.id}>{employeeCode(employee)} - {employeeFullName(employee)}</option>)}
+            </select>
+          </label>
+          <label className="field">
+            <span>Priority</span>
+            <select name="priority" value={workTaskForm.priority} onChange={updateWorkTaskField}>
+              {["LOW", "MEDIUM", "HIGH", "URGENT"].map((priority) => <option key={priority} value={priority}>{humanize(priority)}</option>)}
+            </select>
+          </label>
+          <Field label="Deadline" name="deadline" type="date" value={workTaskForm.deadline} onChange={updateWorkTaskField} />
+          <TextArea label="Description" name="description" value={workTaskForm.description} onChange={updateWorkTaskField} className="span-2" />
+        </div>
+        <button className="primary-button" type="submit" disabled={saving || employees.length === 0}>
+          {saving ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <Plus size={18} aria-hidden="true" />}
+          Assign task
+        </button>
+      </form>
+    );
+  }
+
+  function renderTaskTable(rows, managerView) {
+    return (
+      <div className="data-card">
+        {rows.length === 0 ? <div className="empty-state">No tasks found.</div> : (
+          <table>
+            <thead><tr><th>Task</th><th>Assignee</th><th>Priority</th><th>Status</th><th>Deadline</th><th>Progress</th><th>Manager Comment</th><th>Action</th></tr></thead>
+            <tbody>
+              {rows.map((task) => (
+                <tr key={task.id}>
+                  <td><strong>{task.title}</strong><span>{task.description || "-"}</span></td>
+                  <td><strong>{task.assignedToName}</strong><span>{task.assignedToEmployeeCode || "-"}</span></td>
+                  <td><span className={`crm-badge ${badgeTone(task.priority)}`}>{humanize(task.priority)}</span></td>
+                  <td>
+                    <select className="status-select" value={task.status} onChange={(event) => updateWorkTaskStatus(task, event.target.value)}>
+                      {["TODO", "IN_PROGRESS", "COMPLETED", "BLOCKED"].map((status) => <option key={status} value={status}>{humanize(status)}</option>)}
+                    </select>
+                  </td>
+                  <td>{formatDate(task.deadline)}</td>
+                  <td><input className="status-select" value={taskProgressNotes[task.id] ?? task.progressNote ?? ""} onChange={(event) => setTaskProgressNotes((current) => ({ ...current, [task.id]: event.target.value }))} placeholder="Progress note" /></td>
+                  <td>{managerView ? <input className="status-select" value={taskManagerComments[task.id] ?? task.managerComment ?? ""} onChange={(event) => setTaskManagerComments((current) => ({ ...current, [task.id]: event.target.value }))} placeholder="Manager comment" /> : (task.managerComment || "-")}</td>
+                  <td>
+                    <div className="button-strip">
+                      <button className="pill-action green" type="button" onClick={() => updateWorkTaskStatus(task, task.status)}>Save</button>
+                      {managerView && <button className="pill-action blue" type="button" onClick={() => updateWorkTaskComment(task)}>Comment</button>}
+                      {managerView && <button className="pill-action danger-icon" type="button" onClick={() => deleteWorkTask(task)} aria-label={`Delete ${task.title}`}><Trash2 size={15} aria-hidden="true" /></button>}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    );
+  }
+
+  function renderMyDailyUpdates() {
+    return (
+      <section className="management-screen">
+        <form className="form-panel" onSubmit={submitDailyUpdate}>
+          <div className="section-heading"><h2>Submit Daily Update</h2></div>
+          <div className="form-grid">
+            <Field label="Work date" name="workDate" type="date" value={dailyUpdateForm.workDate} onChange={updateDailyUpdateField} required />
+            <TextArea label="Work update" name="updateText" value={dailyUpdateForm.updateText} onChange={updateDailyUpdateField} className="span-2" required />
+            <TextArea label="Blockers" name="blockers" value={dailyUpdateForm.blockers} onChange={updateDailyUpdateField} className="span-2" />
+          </div>
+          <button className="primary-button" type="submit" disabled={saving}>
+            {saving ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <Plus size={18} aria-hidden="true" />}
+            Submit update
+          </button>
+        </form>
+        {renderDailyUpdateTable(myUpdates, false)}
+      </section>
+    );
+  }
+
+  function renderTeamDailyUpdates() {
+    return (
+      <section className="management-screen">
+        {workflowLoading && teamUpdates.length === 0 ? <div className="screen-loader"><Loader2 className="spin" size={28} aria-hidden="true" />Loading updates...</div> : renderDailyUpdateTable(teamUpdates, true)}
+      </section>
+    );
+  }
+
+  function renderDailyUpdateTable(rows, managerView) {
+    return (
+      <div className="data-card">
+        {rows.length === 0 ? <div className="empty-state">No daily updates found.</div> : (
+          <table>
+            <thead><tr><th>Employee</th><th>Date</th><th>Update</th><th>Blockers</th><th>Status</th><th>Manager Comment</th><th>Action</th></tr></thead>
+            <tbody>
+              {rows.map((update) => (
+                <tr key={update.id}>
+                  <td><strong>{update.employeeName}</strong><span>{update.employeeCode}</span></td>
+                  <td>{formatDate(update.workDate)}</td>
+                  <td>{update.updateText}</td>
+                  <td>{update.blockers || "-"}</td>
+                  <td><span className={`crm-badge ${update.status === "REVIEWED" ? "green" : "amber"}`}>{humanize(update.status)}</span></td>
+                  <td>{managerView ? <input className="status-select" value={dailyReviewComments[update.id] ?? update.managerComment ?? ""} onChange={(event) => setDailyReviewComments((current) => ({ ...current, [update.id]: event.target.value }))} placeholder="Review comment" /> : (update.managerComment || "-")}</td>
+                  <td>{managerView ? <button className="pill-action green" type="button" onClick={() => reviewDailyUpdate(update)}>Review</button> : "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    );
+  }
+
+  function renderAttendance() {
+    return (
+      <section className="management-screen">
+        <div className="overview-grid compact-grid">
+          <OverviewCard icon={CalendarCheck2} tone="green" label="Present" value={employees.filter((employee) => employee.status === "ACTIVE").length} compact />
+          <OverviewCard icon={Hourglass} tone="amber" label="On Leave" value={employees.filter((employee) => employee.status === "ON_LEAVE").length} compact />
+          <OverviewCard icon={XCircle} tone="red" label="Inactive" value={employees.filter((employee) => employee.status === "INACTIVE").length} compact />
+        </div>
+        <div className="data-card">
+          {employees.length === 0 ? <div className="empty-state">No attendance records found.</div> : (
+            <table>
+              <thead><tr><th>Employee</th><th>Department</th><th>Designation</th><th>Date</th><th>Status</th></tr></thead>
+              <tbody>
+                {employees.map((employee) => (
+                  <tr key={employee.id}>
+                    <td><strong>{employeeFullName(employee)}</strong><span>{employeeCode(employee)}</span></td>
+                    <td>{employee.department || "-"}</td>
+                    <td>{employee.jobTitle || "-"}</td>
+                    <td>{formatDate(today())}</td>
+                    <td><span className={`crm-badge ${statusTone(employee.status)}`}>{humanize(employee.status || "ACTIVE")}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </section>
+    );
+  }
+
+  function renderPlaceholder() {
+    const title = allNavItems[activeView]?.title || "Workspace";
+    return (
+      <section className="panel-grid">
+        <article className="department-card">
+          <FileText size={28} aria-hidden="true" />
+          <div><p>MensPingo EMS</p><h2>{title}</h2></div>
+          <div className="mini-stats">
+            <span>{humanize(userRole)}</span>
+            <span>{employees.length} profiles</span>
+          </div>
+        </article>
+      </section>
+    );
+  }
+
+  function renderDocuments() {
+    const documentRows = [
+      ["Identity Documents", currentEmployee ? employeeCode(currentEmployee) : "Company"],
+      ["Offer And Joining", currentEmployee ? employeeFullName(currentEmployee) : "Onboarding"],
+      ["Policy Documents", "MensPingo Tech Solutions"]
+    ];
+    return (
+      <section className="panel-grid">
+        {documentRows.map(([title, detail]) => (
+          <article className="department-card resource-card" key={title}>
+            <FileText size={28} aria-hidden="true" />
+            <div><p>Document</p><h2>{title}</h2></div>
+            <div className="mini-stats"><span>{detail}</span></div>
+          </article>
+        ))}
+      </section>
+    );
+  }
+
+  function renderLearningResources() {
+    const resources = ["Company Handbook", "Engineering Practices", "CRM Playbook", "Leave Policy"];
+    return (
+      <section className="panel-grid">
+        {resources.map((resource) => (
+          <article className="department-card resource-card" key={resource}>
+            <FileText size={28} aria-hidden="true" />
+            <div><p>Resource</p><h2>{resource}</h2></div>
+            <div className="mini-stats"><span>MensPingo EMS</span></div>
+          </article>
+        ))}
+      </section>
+    );
+  }
+
+  function renderProfile() {
+    if (loading && !currentEmployee) {
+      return <div className="screen-loader"><Loader2 className="spin" size={28} aria-hidden="true" />Loading profile...</div>;
+    }
+
+    if (!currentEmployee) {
+      return <section className="management-screen"><div className="data-card"><div className="empty-state">Employee profile was not found.</div></div></section>;
+    }
+
+    return (
+      <section className="management-screen">
+        <article className="employee-detail-card">
+          <img className="employee-photo large-photo" src={employeePhoto({ ...currentEmployee, photoUrl: profileForm.photoUrl }, 260)} alt={employeeFullName(currentEmployee)} />
+          <div className="detail-content">
+            <h2>{employeeFullName(currentEmployee)}</h2>
+            <dl>
+              <div><dt>Employee ID:</dt><dd>{employeeCode(currentEmployee)}</dd></div>
+              <div><dt>Email:</dt><dd>{currentEmployee.email}</dd></div>
+              <div><dt>Department:</dt><dd>{currentEmployee.department}</dd></div>
+              <div><dt>Designation:</dt><dd>{currentEmployee.jobTitle}</dd></div>
+            </dl>
+          </div>
+        </article>
+        <form className="form-panel" onSubmit={submitProfile}>
+          <div className="section-heading"><h2>Update Profile</h2></div>
+          <div className="form-grid role-form-grid">
+            <Field label="Phone" name="phone" value={profileForm.phone} onChange={updateProfileField} />
+            <Field label="Photo URL" name="photoUrl" value={profileForm.photoUrl} onChange={updateProfileField} />
+            <Field label="Date of birth" name="dateOfBirth" type="date" value={profileForm.dateOfBirth} onChange={updateProfileField} />
+            <label className="field">
+              <span>Gender</span>
+              <select name="gender" value={profileForm.gender} onChange={updateProfileField}>
+                <option value="">Select gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+            </label>
+            <label className="field">
+              <span>Marital status</span>
+              <select name="maritalStatus" value={profileForm.maritalStatus} onChange={updateProfileField}>
+                <option value="">Select status</option>
+                <option value="single">Single</option>
+                <option value="married">Married</option>
+              </select>
+            </label>
+          </div>
+          <button className="primary-button" type="submit" disabled={saving}>{saving ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <Edit3 size={18} aria-hidden="true" />}Save profile</button>
+        </form>
+      </section>
+    );
+  }
+
+  function renderProjects() {
+    return (
+      <section className="management-screen">
+        <div className="overview-grid compact-grid">
+          <OverviewCard icon={CheckCircle2} tone="amber" label="Open Tasks" value={visibleTasks.filter((task) => task.status !== "COMPLETED").length} compact />
+          <OverviewCard icon={XCircle} tone="red" label="Blocked" value={visibleTasks.filter((task) => task.status === "BLOCKED").length} compact />
+          <OverviewCard icon={CheckCircle2} tone="green" label="Completed" value={visibleTasks.filter((task) => task.status === "COMPLETED").length} compact />
+        </div>
+        {renderTaskTable(visibleTasks, ["MANAGER", "ADMIN", "FOUNDER"].includes(userRole))}
+      </section>
+    );
+  }
+
+  function renderReports() {
+    return (
+      <section className="management-screen">
+        <div className="overview-grid">
+          <OverviewCard icon={Users} tone="teal" label="Profiles" value={employees.length} />
+          <OverviewCard icon={CheckCircle2} tone="green" label="Completed Tasks" value={visibleTasks.filter((task) => task.status === "COMPLETED").length} />
+          <OverviewCard icon={Hourglass} tone="amber" label="Pending Leaves" value={leaveStats.pending} />
+          <OverviewCard icon={FileText} tone="teal" label="Daily Updates" value={visibleUpdates.length} />
+        </div>
+        <div className="panel-grid">
+          <article className="department-card">
+            <FileText size={28} aria-hidden="true" />
+            <div><p>Report</p><h2>{humanize(userRole)} Summary</h2></div>
+            <div className="mini-stats">
+              <span>{visibleTasks.length} tasks</span>
+              <span>{visibleUpdates.length} updates</span>
+              <span>{leaves.length} leaves</span>
+            </div>
+          </article>
+        </div>
+      </section>
+    );
+  }
+
+  function renderNotifications() {
+    return (
+      <section className="management-screen">
+        <div className="toolbar-row">
+          <button className="solid-action" type="button" onClick={markAllNotificationsRead} disabled={notifications.length === 0}>Mark all read</button>
+        </div>
+        <div className="data-card">
+          {notifications.length === 0 ? <div className="empty-state">No notifications found.</div> : (
+            <table>
+              <thead><tr><th>Notification</th><th>Type</th><th>Created</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody>
+                {notifications.map((notification) => (
+                  <tr key={notification.id}>
+                    <td><strong>{notification.title}</strong><span>{notification.message}</span></td>
+                    <td><span className="inline-badge">{humanize(notification.type)}</span></td>
+                    <td>{formatDateTime(notification.createdAt)}</td>
+                    <td><span className={`crm-badge ${notification.read ? "green" : "amber"}`}>{notification.read ? "Read" : "Unread"}</span></td>
+                    <td>{notification.read ? "-" : <button className="pill-action green" type="button" onClick={() => markNotificationRead(notification)}>Read</button>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </section>
+    );
+  }
+
+  function renderAuditLogs() {
+    return (
+      <section className="management-screen">
+        <div className="data-card">
+          {notifications.length === 0 ? <div className="empty-state">No audit events found.</div> : (
+            <table>
+              <thead><tr><th>Event</th><th>Type</th><th>Created</th></tr></thead>
+              <tbody>
+                {notifications.map((notification) => (
+                  <tr key={notification.id}>
+                    <td><strong>{notification.title}</strong><span>{notification.message}</span></td>
+                    <td><span className="inline-badge">{humanize(notification.type)}</span></td>
+                    <td>{formatDateTime(notification.createdAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </section>
     );
@@ -1456,9 +2243,12 @@ function App() {
   }
 
   function renderLeaves() {
+    const canDecideLeaves = ["ADMIN", "FOUNDER", "HR", "MANAGER"].includes(userRole);
+    const canApplyLeave = activeView !== "teamLeaves";
+
     return (
       <section className="management-screen">
-        <form className="leave-form data-card" onSubmit={submitLeave}>
+        {canApplyLeave && <form className="leave-form data-card" onSubmit={submitLeave}>
           <div className="section-heading"><h2>Apply Leave</h2></div>
           <div className="leave-form-grid">
             <label className="field">
@@ -1474,7 +2264,7 @@ function App() {
             <Field label="Description" name="description" value={leaveForm.description} onChange={updateLeaveField} />
           </div>
           <button className="solid-action" type="submit" disabled={saving}><Plus size={17} aria-hidden="true" />Save Leave</button>
-        </form>
+        </form>}
         <label className="table-search narrow">
           <Search size={17} aria-hidden="true" />
           <input value={leaveSearch} onChange={(event) => setLeaveSearch(event.target.value)} placeholder="Search By Status" aria-label="Search leaves by status" />
@@ -1498,10 +2288,16 @@ function App() {
                     <td><input className="reason-input" value={decisionReasons[row.id] ?? row.decisionReason ?? ""} onChange={(event) => updateDecisionReason(row.id, event.target.value)} placeholder="Reason" /></td>
                     <td>
                       <div className="button-strip leave-actions">
-                        <button className="pill-action green" type="button" onClick={() => updateLeaveDecision(row, "APPROVED")}>Approve</button>
-                        <button className="pill-action yellow" type="button" onClick={() => updateLeaveDecision(row, "PENDING")}>Pending</button>
-                        <button className="pill-action coral" type="button" onClick={() => updateLeaveDecision(row, "CANCELLED")}>Cancel</button>
-                        <button className="pill-action danger-icon wide" type="button" onClick={() => updateLeaveDecision(row, "REJECTED")}>Reject</button>
+                        {canDecideLeaves ? (
+                          <>
+                            <button className="pill-action green" type="button" onClick={() => updateLeaveDecision(row, "APPROVED")}>Approve</button>
+                            <button className="pill-action yellow" type="button" onClick={() => updateLeaveDecision(row, "PENDING")}>Pending</button>
+                            <button className="pill-action coral" type="button" onClick={() => updateLeaveDecision(row, "CANCELLED")}>Cancel</button>
+                            <button className="pill-action danger-icon wide" type="button" onClick={() => updateLeaveDecision(row, "REJECTED")}>Reject</button>
+                          </>
+                        ) : (
+                          <button className="pill-action coral" type="button" onClick={() => updateLeaveDecision(row, "CANCELLED")} disabled={row.status !== "PENDING"}>Cancel</button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -1760,9 +2556,9 @@ function App() {
                   <th>Department</th>
                   <th>Designation</th>
                   <th>Role</th>
-                  <th>Password Changed</th>
-                  <th>Password Changed At</th>
-                  <th>Force Change</th>
+                  {canViewFullCompanyModules && <th>Password Changed</th>}
+                  {canViewFullCompanyModules && <th>Password Changed At</th>}
+                  {canViewFullCompanyModules && <th>Force Change</th>}
                 </tr>
               </thead>
               <tbody>
@@ -1774,12 +2570,12 @@ function App() {
                     <td>{user.department || "Not linked"}</td>
                     <td>{user.designation || "Not linked"}</td>
                     <td><span className="inline-badge">{humanize(user.role)}</span></td>
-                    <td>{yesNo(user.passwordChanged)}</td>
-                    <td>{formatDateTime(user.passwordChangedAt)}</td>
-                    <td>{yesNo(user.forcePasswordChange)}</td>
+                    {canViewFullCompanyModules && <td>{yesNo(user.passwordChanged)}</td>}
+                    {canViewFullCompanyModules && <td>{formatDateTime(user.passwordChangedAt)}</td>}
+                    {canViewFullCompanyModules && <td>{yesNo(user.forcePasswordChange)}</td>}
                   </tr>
                 ))}
-                {users.length === 0 && <tr><td colSpan={9}>No users found.</td></tr>}
+                {users.length === 0 && <tr><td colSpan={canViewFullCompanyModules ? 9 : 6}>No users found.</td></tr>}
               </tbody>
             </table>
           )}
@@ -1955,6 +2751,23 @@ function getPageSubtitle(view) {
     salary: "View salary, allowance, deduction, and pay-date summaries.",
     crm: "Manage customers, follow-ups, communication history, and support context.",
     users: "Create company accounts, assign roles, and track temporary password status.",
+    myTasks: "View assigned work, update status, and record progress notes.",
+    teamTasks: "Review team work, blockers, priorities, and deadlines.",
+    assignTask: "Assign work to permitted team members and set delivery priority.",
+    tasks: "Review company work, blockers, priorities, and deadlines.",
+    dailyUpdates: "Submit or review daily work updates and blocker notes.",
+    teamDailyUpdates: "Review employee updates and add manager comments.",
+    attendance: "Review active, leave, and inactive attendance signals.",
+    documents: "View employee and company documents.",
+    learning: "Access MensPingo learning resources.",
+    profile: "Review and update your employee profile.",
+    projects: "Track team project progress through assigned work.",
+    teamLeaves: "Review and decide team leave requests.",
+    reports: "Review role-based workflow, leave, and update summaries.",
+    notifications: "Read account notifications and workflow alerts.",
+    onboarding: "Create company accounts and continue onboarding.",
+    candidates: "Track hiring and candidate pipeline context.",
+    auditLogs: "Review notification-backed workflow events.",
     settings: "Review account details and active JWT session information."
   };
   return subtitles[view] || "";
