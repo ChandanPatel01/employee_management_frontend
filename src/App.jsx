@@ -358,7 +358,7 @@ function App() {
       const fullName = `${employee.firstName} ${employee.lastName}`.toLowerCase();
       return employeeCode(employee).toLowerCase().includes(query)
         || fullName.includes(query)
-        || employee.email.toLowerCase().includes(query);
+        || (employee.email || "").toLowerCase().includes(query);
     });
   }, [employeeSearch, employees]);
 
@@ -1038,7 +1038,13 @@ function App() {
   }
 
   async function deleteEmployee(employee) {
-    const confirmed = window.confirm(`Delete ${employee.firstName} ${employee.lastName}?`);
+    if (employee.status === "INACTIVE") {
+      setError("");
+      setMessage("Employee is already inactive.");
+      return;
+    }
+
+    const confirmed = window.confirm(`Deactivate ${employee.firstName} ${employee.lastName}?`);
     if (!confirmed) {
       return;
     }
@@ -1047,10 +1053,12 @@ function App() {
     setMessage("");
 
     try {
-      await request(`${API_PREFIX}/employees/${employee.id}`, { method: "DELETE" });
-      setMessage("Employee deleted.");
+      const result = await request(`${API_PREFIX}/employees/${employee.id}`, { method: "DELETE" });
+      setEmployees((current) => current.filter((row) => row.id !== employee.id));
+      setMessage(result?.message || "Employee deactivated successfully.");
       await loadEmployees();
       await loadLeaves();
+      await loadUsers();
       if (editingId === employee.id) {
         resetForm();
         setShowEmployeeForm(false);
@@ -2337,7 +2345,7 @@ function App() {
                         <button className="pill-action green" type="button" onClick={() => editEmployee(employee)}><Edit3 size={15} aria-hidden="true" />Edit</button>
                         <button className="pill-action yellow" type="button" onClick={() => showSalary(employee)}>Salary</button>
                         <button className="pill-action coral" type="button" onClick={() => showLeaves(employee)}>Leave</button>
-                        <button className="pill-action danger-icon" type="button" onClick={() => deleteEmployee(employee)} aria-label={`Delete ${employee.firstName}`}><Trash2 size={15} aria-hidden="true" /></button>
+                        <button className="pill-action danger-icon" type="button" onClick={() => deleteEmployee(employee)} aria-label={`Deactivate ${employee.firstName}`}><Trash2 size={15} aria-hidden="true" /></button>
                       </div>
                     </td>
                   </tr>
