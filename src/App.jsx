@@ -40,6 +40,7 @@ const emptyForm = {
   email: "",
   department: "",
   jobTitle: "",
+  phone: "",
   salary: "",
   hireDate: today(),
   dateOfBirth: "",
@@ -96,8 +97,16 @@ const emptyCommunicationForm = {
 };
 
 const emptyUserForm = {
-  name: "",
+  employeeId: "",
+  firstName: "",
+  lastName: "",
   email: "",
+  department: "",
+  jobTitle: "",
+  phone: "",
+  salary: "",
+  hireDate: today(),
+  status: "ACTIVE",
   temporaryPassword: "",
   role: "EMPLOYEE"
 };
@@ -127,6 +136,7 @@ const allNavItems = {
 };
 
 const roleMenus = {
+  FOUNDER: ["dashboard", "employees", "departments", "leaves", "salary", "crm", "users", "settings"],
   ADMIN: ["dashboard", "employees", "departments", "leaves", "salary", "crm", "users", "settings"],
   HR: ["dashboard", "users", "employees", "leaves", "salary", "settings"],
   MANAGER: ["dashboard", "crm", "settings"],
@@ -135,6 +145,7 @@ const roleMenus = {
 };
 
 const roleTitles = {
+  FOUNDER: "Founder Dashboard",
   ADMIN: "Admin Dashboard",
   HR: "HR Dashboard",
   MANAGER: "Manager Dashboard",
@@ -142,7 +153,7 @@ const roleTitles = {
   INTERN: "Employee Dashboard"
 };
 
-const adminCreatableRoles = ["EMPLOYEE", "INTERN", "MANAGER", "HR", "ADMIN"];
+const adminCreatableRoles = ["INTERN", "EMPLOYEE", "MANAGER", "HR", "ADMIN", "FOUNDER"];
 const hrCreatableRoles = ["EMPLOYEE", "INTERN", "MANAGER"];
 
 function App() {
@@ -162,6 +173,7 @@ function App() {
   const [crmTaskForm, setCrmTaskForm] = useState(emptyCrmTaskForm);
   const [communicationForm, setCommunicationForm] = useState(emptyCommunicationForm);
   const [userForm, setUserForm] = useState(emptyUserForm);
+  const [userCreationMode, setUserCreationMode] = useState("existing");
   const [passwordForm, setPasswordForm] = useState(emptyPasswordForm);
   const [decisionReasons, setDecisionReasons] = useState({});
   const [editingId, setEditingId] = useState(null);
@@ -193,8 +205,16 @@ function App() {
   const mustChangePassword = requiresPasswordChange(auth);
   const navItems = useMemo(() => getNavigationForRole(userRole), [userRole]);
   const canAccessActiveView = navItems.some((item) => item.id === activeView);
-  const canViewPasswordTracking = userRole === "ADMIN";
-  const creatableRoles = userRole === "ADMIN" ? adminCreatableRoles : hrCreatableRoles;
+  const canViewCompanyModules = ["ADMIN", "FOUNDER", "HR"].includes(userRole);
+  const canViewFullCompanyModules = ["ADMIN", "FOUNDER"].includes(userRole);
+  const creatableRoles = canViewFullCompanyModules ? adminCreatableRoles : hrCreatableRoles;
+  const linkedEmployeeIds = useMemo(() => new Set(users.map((user) => user.employeeId).filter(Boolean)), [users]);
+  const availableEmployeesForUser = useMemo(() => employees.filter((employee) => {
+    return !linkedEmployeeIds.has(employee.id) || String(employee.id) === userForm.employeeId;
+  }), [employees, linkedEmployeeIds, userForm.employeeId]);
+  const selectedUserEmployee = useMemo(() => {
+    return employees.find((employee) => String(employee.id) === String(userForm.employeeId)) || null;
+  }, [employees, userForm.employeeId]);
 
   const departments = useMemo(() => {
     return [...new Set(employees.map((employee) => employee.department).filter(Boolean))].sort();
@@ -446,6 +466,7 @@ function App() {
     setCrmTaskForm(emptyCrmTaskForm);
     setCommunicationForm(emptyCommunicationForm);
     setUserForm(emptyUserForm);
+    setUserCreationMode("existing");
     setPasswordForm(emptyPasswordForm);
     setEditingId(null);
     setEditingCustomerId(null);
@@ -561,7 +582,7 @@ function App() {
   }
 
   async function loadUsers() {
-    if (!auth?.token || !["ADMIN", "HR"].includes(userRole)) {
+    if (!auth?.token || !["ADMIN", "FOUNDER", "HR"].includes(userRole)) {
       return;
     }
 
@@ -578,26 +599,39 @@ function App() {
     }
   }
 
+  async function loadEmployeeOptions() {
+    if (!auth?.token || !["ADMIN", "FOUNDER", "HR"].includes(userRole)) {
+      return;
+    }
+
+    try {
+      const data = await request(`${API_PREFIX}/employees`);
+      setEmployees(data);
+    } catch (apiError) {
+      setError(apiError.message);
+    }
+  }
+
   async function loadViewData(view = activeView) {
     if (!auth?.token) {
       return;
     }
 
-    if (["ADMIN", "HR"].includes(userRole) && ["dashboard", "employees", "departments", "salary"].includes(view)) {
+    if (canViewCompanyModules && ["dashboard", "employees", "departments", "salary"].includes(view)) {
       await loadEmployees("");
     }
 
-    if (["ADMIN", "HR"].includes(userRole) && ["dashboard", "leaves"].includes(view)) {
+    if (canViewCompanyModules && ["dashboard", "leaves"].includes(view)) {
       await loadLeaves();
     }
 
-    if (view === "crm" && ["ADMIN", "MANAGER"].includes(userRole)) {
+    if (view === "crm" && ["ADMIN", "FOUNDER", "MANAGER"].includes(userRole)) {
       await loadCrmData();
       return;
     }
 
     if (view === "users") {
-      await loadUsers();
+      await Promise.all([loadUsers(), loadEmployeeOptions()]);
     }
   }
 
@@ -636,6 +670,14 @@ function App() {
   function updateUserField(event) {
     const { name, value } = event.target;
     setUserForm((current) => ({ ...current, [name]: value }));
+  }
+
+  function changeUserCreationMode(mode) {
+    setUserCreationMode(mode);
+    setUserForm((current) => ({
+      ...emptyUserForm,
+      role: creatableRoles.includes(current.role) ? current.role : creatableRoles[0] || "EMPLOYEE"
+    }));
   }
 
   function updatePasswordField(event) {
@@ -693,6 +735,7 @@ function App() {
       email: employee.email,
       department: employee.department,
       jobTitle: employee.jobTitle,
+      phone: employee.phone || "",
       salary: employee.salary,
       hireDate: employee.hireDate,
       dateOfBirth: employee.dateOfBirth || "",
@@ -1067,11 +1110,17 @@ function App() {
     setError("");
 
     try {
+      if (userCreationMode === "existing" && !userForm.employeeId) {
+        setError("Select an employee profile before creating login access.");
+        return;
+      }
+
       const data = await request(`${API_PREFIX}/users`, {
         method: "POST",
-        body: JSON.stringify(userForm)
+        body: JSON.stringify(userPayload())
       });
       setUserForm(emptyUserForm);
+      setUserCreationMode("existing");
       setMessage(data.message || (data.onboardingEmailSent
         ? "User created and onboarding email sent."
         : "User created, but onboarding email could not be sent."));
@@ -1081,6 +1130,32 @@ function App() {
     } finally {
       setSaving(false);
     }
+  }
+
+  function userPayload() {
+    if (userCreationMode === "existing") {
+      return {
+        employeeId: Number(userForm.employeeId),
+        temporaryPassword: userForm.temporaryPassword,
+        role: userForm.role
+      };
+    }
+
+    return {
+      temporaryPassword: userForm.temporaryPassword,
+      role: userForm.role,
+      employee: {
+        firstName: userForm.firstName,
+        lastName: userForm.lastName,
+        email: userForm.email,
+        department: userForm.department,
+        jobTitle: userForm.jobTitle,
+        phone: userForm.phone,
+        salary: Number(userForm.salary || 0),
+        hireDate: userForm.hireDate || today(),
+        status: userForm.status || "ACTIVE"
+      }
+    };
   }
 
   function refreshActiveView() {
@@ -1205,7 +1280,7 @@ function App() {
   }
 
   function renderDashboard() {
-    if (!["ADMIN", "HR"].includes(userRole)) {
+    if (!canViewCompanyModules) {
       return (
         <section className="dashboard-screen">
           <div className="overview-grid">
@@ -1280,6 +1355,7 @@ function App() {
               <Field label="Email" name="email" type="email" value={form.email} onChange={updateField} error={validationErrors.email} required />
               <Field label="Department" name="department" value={form.department} onChange={updateField} error={validationErrors.department} required />
               <Field label="Job title" name="jobTitle" value={form.jobTitle} onChange={updateField} error={validationErrors.jobTitle} required />
+              <Field label="Phone" name="phone" value={form.phone} onChange={updateField} />
               <Field label="Salary" name="salary" type="number" min="0" step="0.01" value={form.salary} onChange={updateField} error={validationErrors.salary} required />
               <Field label="Hire date" name="hireDate" type="date" value={form.hireDate} onChange={updateField} error={validationErrors.hireDate} required />
               <Field label="Date of birth" name="dateOfBirth" type="date" value={form.dateOfBirth} onChange={updateField} />
@@ -1621,9 +1697,41 @@ function App() {
           <div className="section-heading">
             <h2>Create Company User</h2>
           </div>
+          <div className="crm-filter-row" aria-label="User creation mode">
+            <button className={userCreationMode === "existing" ? "filter-button active" : "filter-button"} type="button" onClick={() => changeUserCreationMode("existing")}>Existing employee</button>
+            <button className={userCreationMode === "new" ? "filter-button active" : "filter-button"} type="button" onClick={() => changeUserCreationMode("new")}>New employee + user</button>
+          </div>
           <div className="form-grid role-form-grid">
-            <Field label="Name" name="name" value={userForm.name} onChange={updateUserField} required />
-            <Field label="Email" name="email" type="email" value={userForm.email} onChange={updateUserField} required />
+            {userCreationMode === "existing" ? (
+              <>
+                <label className="field">
+                  <span>Employee profile</span>
+                  <select name="employeeId" value={userForm.employeeId} onChange={updateUserField} required>
+                    <option value="">Select employee</option>
+                    {availableEmployeesForUser.map((employee) => (
+                      <option key={employee.id} value={employee.id}>
+                        {employeeCode(employee)} - {employeeFullName(employee)} ({employee.email})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <Field label="Name" value={selectedUserEmployee ? employeeFullName(selectedUserEmployee) : ""} readOnly />
+                <Field label="Email" value={selectedUserEmployee?.email || ""} readOnly />
+                <Field label="Department" value={selectedUserEmployee?.department || ""} readOnly />
+                <Field label="Designation" value={selectedUserEmployee?.jobTitle || ""} readOnly />
+              </>
+            ) : (
+              <>
+                <Field label="First name" name="firstName" value={userForm.firstName} onChange={updateUserField} required />
+                <Field label="Last name" name="lastName" value={userForm.lastName} onChange={updateUserField} required />
+                <Field label="Email" name="email" type="email" value={userForm.email} onChange={updateUserField} required />
+                <Field label="Department" name="department" value={userForm.department} onChange={updateUserField} required />
+                <Field label="Designation" name="jobTitle" value={userForm.jobTitle} onChange={updateUserField} required />
+                <Field label="Phone" name="phone" value={userForm.phone} onChange={updateUserField} />
+                <Field label="Salary" name="salary" type="number" min="0" step="0.01" value={userForm.salary} onChange={updateUserField} required />
+                <Field label="Hire date" name="hireDate" type="date" value={userForm.hireDate} onChange={updateUserField} required />
+              </>
+            )}
             <Field label="Temporary Password" name="temporaryPassword" type="password" value={userForm.temporaryPassword} onChange={updateUserField} minLength={8} required />
             <label className="field">
               <span>Role</span>
@@ -1646,28 +1754,32 @@ function App() {
             <table>
               <thead>
                 <tr>
-                  <th>User</th>
+                  <th>Employee Code</th>
+                  <th>Name</th>
                   <th>Email</th>
+                  <th>Department</th>
+                  <th>Designation</th>
                   <th>Role</th>
-                  <th>Created By</th>
-                  {canViewPasswordTracking && <th>Password Changed</th>}
-                  {canViewPasswordTracking && <th>Password Changed At</th>}
-                  {canViewPasswordTracking && <th>Force Change</th>}
+                  <th>Password Changed</th>
+                  <th>Password Changed At</th>
+                  <th>Force Change</th>
                 </tr>
               </thead>
               <tbody>
                 {users.map((user) => (
                   <tr key={user.id}>
-                    <td><strong>{user.name}</strong><span>ID {user.id}</span></td>
+                    <td><strong>{user.employeeCode || "Not linked"}</strong></td>
+                    <td>{user.employeeName || user.name || "Not linked"}</td>
                     <td>{user.email}</td>
+                    <td>{user.department || "Not linked"}</td>
+                    <td>{user.designation || "Not linked"}</td>
                     <td><span className="inline-badge">{humanize(user.role)}</span></td>
-                    <td>{user.createdBy || "-"}</td>
-                    {canViewPasswordTracking && <td>{yesNo(user.passwordChanged)}</td>}
-                    {canViewPasswordTracking && <td>{formatDateTime(user.passwordChangedAt)}</td>}
-                    {canViewPasswordTracking && <td>{yesNo(user.forcePasswordChange)}</td>}
+                    <td>{yesNo(user.passwordChanged)}</td>
+                    <td>{formatDateTime(user.passwordChangedAt)}</td>
+                    <td>{yesNo(user.forcePasswordChange)}</td>
                   </tr>
                 ))}
-                {users.length === 0 && <tr><td colSpan={canViewPasswordTracking ? 7 : 4}>No users found.</td></tr>}
+                {users.length === 0 && <tr><td colSpan={9}>No users found.</td></tr>}
               </tbody>
             </table>
           )}
@@ -1779,10 +1891,10 @@ function OverviewCard({ icon: Icon, tone, label, value, compact = false }) {
 }
 
 function EmployeeDetails({ employee, onBack, onEdit }) {
-  const details = [["Name", `${employee.firstName} ${employee.lastName}`], ["Employee ID", employeeCode(employee)], ["Date of Birth", formatDate(employee.dateOfBirth)], ["Gender", employee.gender || "-"], ["Department", employee.department], ["Position", employee.jobTitle], ["Marital Status", employee.maritalStatus || "-"]];
+  const details = [["Name", employeeFullName(employee)], ["Employee ID", employeeCode(employee)], ["Date of Birth", formatDate(employee.dateOfBirth)], ["Gender", employee.gender || "-"], ["Department", employee.department], ["Position", employee.jobTitle], ["Phone", employee.phone || "-"], ["Marital Status", employee.maritalStatus || "-"]];
   return (
     <section className="employee-detail-card">
-      <img className="employee-photo large-photo" src={employeePhoto(employee, 260)} alt={`${employee.firstName} ${employee.lastName}`} />
+      <img className="employee-photo large-photo" src={employeePhoto(employee, 260)} alt={employeeFullName(employee)} />
       <div className="detail-content"><h2>Employee Details</h2><dl>{details.map(([label, value]) => <div key={label}><dt>{label}:</dt><dd>{value}</dd></div>)}</dl><div className="detail-actions"><button className="ghost-action" type="button" onClick={onBack}>Back</button><button className="solid-action" type="button" onClick={() => onEdit(employee)}>Edit Employee</button></div></div>
     </section>
   );
@@ -1861,6 +1973,10 @@ function employeeCode(employee) {
   const first = employee.firstName?.trim()?.[0] || "E";
   const last = employee.lastName?.trim()?.[0] || "M";
   return `${first}${last}${String(employee.id || 0).padStart(4, "0")}`.toUpperCase();
+}
+
+function employeeFullName(employee) {
+  return `${employee.firstName || ""} ${employee.lastName || ""}`.trim() || "Not linked";
 }
 
 function employeePhoto(employee, size) {
