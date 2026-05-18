@@ -2740,11 +2740,11 @@ function App() {
                     <td>{user.email}</td>
                     <td>{user.department || "Not linked"}</td>
                     <td>{user.designation || "Not linked"}</td>
-                    <td><span className="inline-badge">{humanize(user.role)}</span></td>
-                    <td><span className={`inline-badge ${isInactiveUser(user) ? "danger" : ""}`}>{isInactiveUser(user) ? "Inactive" : "Active"}</span></td>
-                    {canViewFullCompanyModules && <td>{yesNo(user.passwordChanged)}</td>}
+                    <td><span className={`inline-badge ${roleBadgeClass(user.role)}`}>{humanize(user.role)}</span></td>
+                    <td><span className={`inline-badge ${userStatusBadgeClass(user)}`}>{userStatusLabel(user)}</span></td>
+                    {canViewFullCompanyModules && <td><span className={`inline-badge ${user.passwordChanged ? "badge-active" : "badge-inactive"}`}>{yesNo(user.passwordChanged)}</span></td>}
                     {canViewFullCompanyModules && <td>{formatDateTime(user.passwordChangedAt)}</td>}
-                    {canViewFullCompanyModules && <td>{yesNo(user.forcePasswordChange)}</td>}
+                    {canViewFullCompanyModules && <td><span className={`inline-badge ${user.forcePasswordChange ? "badge-inactive" : "badge-active"}`}>{yesNo(user.forcePasswordChange)}</span></td>}
                     {includeInactiveUsers && (
                       <td>
                         {isInactiveUser(user) ? (
@@ -2822,7 +2822,7 @@ function App() {
                   ))}
                 </select>
               </label>
-              {selectedBlockUser && <span className={`inline-badge ${selectedBlockUser.blocked ? "danger" : ""}`}>{selectedBlockUser.blocked ? "Blocked" : "Active"}</span>}
+              {selectedBlockUser && <span className={`inline-badge ${selectedBlockUser.blocked ? "badge-blocked" : "badge-active"}`}>{selectedBlockUser.blocked ? "Blocked" : "Active"}</span>}
               <button className={selectedBlockUser?.blocked ? "primary-button settings-action" : "danger-button settings-action"} type="submit" disabled={saving || !selectedBlockUser}>
                 {saving ? <Loader2 className="spin" size={18} aria-hidden="true" /> : <UserX size={18} aria-hidden="true" />}
                 {selectedBlockUser?.blocked ? "Unblock User" : "Block User"}
@@ -3110,6 +3110,27 @@ function statusTone(status = "") {
 
 function isInactiveUser(user) {
   return Boolean(user?.blocked || user?.employeeStatus === "INACTIVE");
+}
+
+function roleBadgeClass(role = "") {
+  const normalized = role.toUpperCase();
+  if (normalized === "ADMIN" || normalized === "FOUNDER") return "badge-admin";
+  if (normalized === "HR") return "badge-hr";
+  if (normalized === "MANAGER") return "badge-manager";
+  if (normalized === "INTERN") return "badge-intern";
+  return "badge-employee";
+}
+
+function userStatusBadgeClass(user) {
+  if (user?.blocked) return "badge-blocked";
+  if (isInactiveUser(user)) return "badge-inactive";
+  return "badge-active";
+}
+
+function userStatusLabel(user) {
+  if (user?.blocked) return "Blocked";
+  if (isInactiveUser(user)) return "Inactive";
+  return "Active";
 }
 
 function priorityTone(priority = "") {

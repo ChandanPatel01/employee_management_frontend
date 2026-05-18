@@ -2095,6 +2095,17 @@ td span {
   color: #F8FAFC;
 }
 
+.app-shell[data-appearance="night"] .field input:read-only {
+  background: #111827;
+  color: #E5E7EB;
+}
+
+.app-shell[data-appearance="night"] .field select option,
+.app-shell[data-appearance="night"] .status-select option {
+  background: #020617;
+  color: #F8FAFC;
+}
+
 .app-shell[data-appearance="night"] .table-search input {
   color: #F8FAFC;
 }
@@ -2116,11 +2127,16 @@ td span {
 
 .app-shell[data-appearance="night"] th {
   background: #0F172A;
-  color: #E2E8F0;
+  color: #F8FAFC;
 }
 
-.app-shell[data-appearance="night"] tr {
+.app-shell[data-appearance="night"] th,
+.app-shell[data-appearance="night"] td {
   border-bottom-color: rgba(71, 85, 105, 0.68);
+}
+
+.app-shell[data-appearance="night"] tbody tr:hover td {
+  background: rgba(30, 41, 59, 0.42);
 }
 
 .app-shell[data-appearance="night"] .mini-stats span,
@@ -2145,6 +2161,79 @@ td span {
 
 .app-shell[data-appearance="night"] .appearance-option.active {
   color: #FFFFFF;
+}
+
+.app-shell[data-appearance="night"] .crm-badge,
+.app-shell[data-appearance="night"] .inline-badge {
+  border: 1px solid transparent;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: #F8FAFC;
+}
+
+.app-shell[data-appearance="night"] .inline-badge {
+  background: #1E293B;
+}
+
+.app-shell[data-appearance="night"] .badge-admin {
+  background: #4C1D95;
+  border-color: #7C3AED;
+  color: #F5F3FF;
+}
+
+.app-shell[data-appearance="night"] .badge-hr {
+  background: #831843;
+  border-color: #DB2777;
+  color: #FCE7F3;
+}
+
+.app-shell[data-appearance="night"] .badge-manager {
+  background: #1E3A8A;
+  border-color: #3B82F6;
+  color: #DBEAFE;
+}
+
+.app-shell[data-appearance="night"] .badge-employee {
+  background: #134E4A;
+  border-color: #14B8A6;
+  color: #CCFBF1;
+}
+
+.app-shell[data-appearance="night"] .badge-intern {
+  background: #78350F;
+  border-color: #F59E0B;
+  color: #FEF3C7;
+}
+
+.app-shell[data-appearance="night"] .badge-active,
+.app-shell[data-appearance="night"] .crm-badge.green,
+.app-shell[data-appearance="night"] .leave-status.approved {
+  background: #14532D;
+  border-color: #22C55E;
+  color: #DCFCE7;
+}
+
+.app-shell[data-appearance="night"] .badge-inactive,
+.app-shell[data-appearance="night"] .badge-blocked,
+.app-shell[data-appearance="night"] .inline-badge.danger,
+.app-shell[data-appearance="night"] .crm-badge.red,
+.app-shell[data-appearance="night"] .leave-status.rejected {
+  background: #7F1D1D;
+  border-color: #EF4444;
+  color: #FEE2E2;
+}
+
+.app-shell[data-appearance="night"] .crm-badge.amber,
+.app-shell[data-appearance="night"] .leave-status.pending {
+  background: #78350F;
+  border-color: #F59E0B;
+  color: #FEF3C7;
+}
+
+.app-shell[data-appearance="night"] .crm-badge.neutral,
+.app-shell[data-appearance="night"] .leave-status.cancelled {
+  background: #1E293B;
+  border-color: #64748B;
+  color: #E2E8F0;
 }
 
 .auth-shell {
