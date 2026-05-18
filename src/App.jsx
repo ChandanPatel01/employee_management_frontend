@@ -255,6 +255,7 @@ function App() {
   const [crmTaskFilter, setCrmTaskFilter] = useState("all");
   const [crmCommunicationFilter, setCrmCommunicationFilter] = useState("");
   const [users, setUsers] = useState([]);
+  const [includeInactiveUsers, setIncludeInactiveUsers] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [showEmployeeForm, setShowEmployeeForm] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -276,9 +277,13 @@ function App() {
   const canViewFullCompanyModules = ["ADMIN", "FOUNDER"].includes(userRole);
   const canManageSettingsUsers = ["ADMIN", "FOUNDER"].includes(userRole);
   const creatableRoles = canViewFullCompanyModules ? adminCreatableRoles : hrCreatableRoles;
-  const linkedEmployeeIds = useMemo(() => new Set(users.map((user) => user.employeeId).filter(Boolean)), [users]);
+  const linkedEmployeeIds = useMemo(() => new Set(users
+    .filter((user) => !isInactiveUser(user))
+    .map((user) => user.employeeId)
+    .filter(Boolean)), [users]);
   const availableEmployeesForUser = useMemo(() => employees.filter((employee) => {
-    return !linkedEmployeeIds.has(employee.id) || String(employee.id) === userForm.employeeId;
+    return employee.status !== "INACTIVE"
+      && (!linkedEmployeeIds.has(employee.id) || String(employee.id) === userForm.employeeId);
   }), [employees, linkedEmployeeIds, userForm.employeeId]);
   const selectedUserEmployee = useMemo(() => {
     return employees.find((employee) => String(employee.id) === String(userForm.employeeId)) || null;
@@ -713,7 +718,7 @@ function App() {
     }
   }
 
-  async function loadUsers() {
+  async function loadUsers({ includeInactive = false } = {}) {
     if (!auth?.token || !["ADMIN", "FOUNDER", "HR"].includes(userRole)) {
       return;
     }
@@ -722,7 +727,8 @@ function App() {
     setError("");
 
     try {
-      const data = await request(`${API_PREFIX}/users`);
+      const query = includeInactive ? "?includeInactive=true" : "";
+      const data = await request(`${API_PREFIX}/users${query}`);
       setUsers(data);
     } catch (apiError) {
       setError(apiError.message);
@@ -865,7 +871,7 @@ function App() {
     }
 
     if (["users", "onboarding"].includes(view)) {
-      await Promise.all([loadUsers(), loadEmployeeOptions()]);
+      await Promise.all([loadUsers({ includeInactive: includeInactiveUsers }), loadEmployeeOptions()]);
     }
   }
 
@@ -1055,7 +1061,7 @@ function App() {
     try {
       const result = await request(`${API_PREFIX}/employees/${employee.id}`, { method: "DELETE" });
       setEmployees((current) => current.filter((row) => row.id !== employee.id));
-      setMessage(result?.message || "Employee deactivated successfully.");
+      setMessage(result?.message || "Employee and linked user account deactivated successfully.");
       await loadEmployees();
       await loadLeaves();
       await loadUsers();
@@ -1396,7 +1402,28 @@ function App() {
       setMessage(data.message || (data.onboardingEmailSent
         ? "User created and onboarding email sent."
         : "User created, but onboarding email could not be sent."));
-      await loadUsers();
+      await loadUsers({ includeInactive: includeInactiveUsers });
+    } catch (apiError) {
+      setError(apiError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function changeInactiveUsersVisibility(includeInactive) {
+    setIncludeInactiveUsers(includeInactive);
+    await loadUsers({ includeInactive });
+  }
+
+  async function reactivateUser(user) {
+    setSaving(true);
+    setMessage("");
+    setError("");
+
+    try {
+      await request(`${API_PREFIX}/users/${user.id}/reactivate`, { method: "PUT" });
+      setMessage("User account reactivated successfully.");
+      await Promise.all([loadUsers({ includeInactive: includeInactiveUsers }), loadEmployeeOptions()]);
     } catch (apiError) {
       setError(apiError.message);
     } finally {
@@ -2623,6 +2650,8 @@ function App() {
   }
 
   function renderUsers() {
+    const userColumnCount = 7 + (canViewFullCompanyModules ? 3 : 0) + (includeInactiveUsers ? 1 : 0);
+
     return (
       <section className="management-screen">
         <form className="form-panel" onSubmit={submitUser}>
@@ -2680,6 +2709,10 @@ function App() {
         </form>
 
         <div className="data-card">
+          <div className="crm-filter-row" aria-label="User list filter">
+            <button className={!includeInactiveUsers ? "filter-button active" : "filter-button"} type="button" onClick={() => changeInactiveUsersVisibility(false)}>Active users</button>
+            <button className={includeInactiveUsers ? "filter-button active" : "filter-button"} type="button" onClick={() => changeInactiveUsersVisibility(true)}>Include inactive</button>
+          </div>
           {userLoading ? (
             <div className="screen-loader"><Loader2 className="spin" size={28} aria-hidden="true" />Loading users...</div>
           ) : (
@@ -2692,9 +2725,11 @@ function App() {
                   <th>Department</th>
                   <th>Designation</th>
                   <th>Role</th>
+                  <th>Status</th>
                   {canViewFullCompanyModules && <th>Password Changed</th>}
                   {canViewFullCompanyModules && <th>Password Changed At</th>}
                   {canViewFullCompanyModules && <th>Force Change</th>}
+                  {includeInactiveUsers && <th>Action</th>}
                 </tr>
               </thead>
               <tbody>
@@ -2706,12 +2741,22 @@ function App() {
                     <td>{user.department || "Not linked"}</td>
                     <td>{user.designation || "Not linked"}</td>
                     <td><span className="inline-badge">{humanize(user.role)}</span></td>
+                    <td><span className={`inline-badge ${isInactiveUser(user) ? "danger" : ""}`}>{isInactiveUser(user) ? "Inactive" : "Active"}</span></td>
                     {canViewFullCompanyModules && <td>{yesNo(user.passwordChanged)}</td>}
                     {canViewFullCompanyModules && <td>{formatDateTime(user.passwordChangedAt)}</td>}
                     {canViewFullCompanyModules && <td>{yesNo(user.forcePasswordChange)}</td>}
+                    {includeInactiveUsers && (
+                      <td>
+                        {isInactiveUser(user) ? (
+                          <button className="pill-action green" type="button" onClick={() => reactivateUser(user)} disabled={saving}>
+                            <RefreshCcw size={15} aria-hidden="true" />Reactivate
+                          </button>
+                        ) : "-"}
+                      </td>
+                    )}
                   </tr>
                 ))}
-                {users.length === 0 && <tr><td colSpan={canViewFullCompanyModules ? 9 : 6}>No users found.</td></tr>}
+                {users.length === 0 && <tr><td colSpan={userColumnCount}>No users found.</td></tr>}
               </tbody>
             </table>
           )}
@@ -3059,8 +3104,12 @@ function statusTone(status = "") {
   const normalized = status.toUpperCase();
   if (["APPROVED", "ACTIVE", "PRESENT", "COMPLETED", "SELECTED"].includes(normalized)) return "green";
   if (["PENDING", "PLANNED", "SCREENING", "INTERVIEW", "IN_PROGRESS", "REMOTE", "HALF_DAY"].includes(normalized)) return "amber";
-  if (["REJECTED", "BLOCKED", "ABSENT"].includes(normalized)) return "red";
+  if (["REJECTED", "BLOCKED", "ABSENT", "INACTIVE"].includes(normalized)) return "red";
   return "neutral";
+}
+
+function isInactiveUser(user) {
+  return Boolean(user?.blocked || user?.employeeStatus === "INACTIVE");
 }
 
 function priorityTone(priority = "") {
